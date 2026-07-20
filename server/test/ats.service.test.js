@@ -69,9 +69,11 @@ test('extracts domain phrases that are not in a fixed software dictionary', () =
   const equipmentAction = result.tailoringPlan.keywordActions.find((item) => item.term === 'equipment installation');
   assert.equal(equipmentAction.action, 'addKeyword');
   assert.match(equipmentAction.guidance, /^Add /);
-  assert.equal(equipmentAction.location.primarySection, 'Technical Skills');
-  assert.equal(equipmentAction.location.supportingSection, 'Experience or Projects');
+  assert.equal(equipmentAction.location.primarySection, 'New Technical Skills section');
+  assert.ok(['Experience', 'Experience or Projects'].includes(equipmentAction.location.supportingSection));
   assert.match(equipmentAction.location.missingPart, /skill name/i);
+  assert.ok(['JD-to-resume contextual similarity', 'section fallback'].includes(equipmentAction.location.method));
+  assert.ok(['high', 'medium', 'low'].includes(equipmentAction.location.confidence));
   assert.equal(Object.hasOwn(result.tailoringPlan, 'safetyNote'), false);
   assert.ok(Number.isInteger(result.report.keywordCoveragePercentage));
   assert.ok('responsibilitiesMatch' in result.report.categoryScores || result.report.missingResponsibilities.length === 0);

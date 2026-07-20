@@ -175,7 +175,7 @@ export function analyzeMatch(resume, jobDescription) {
     }
   };
 
-  const tailoringPlan = buildTailoringPlan(analysis);
+  const tailoringPlan = buildTailoringPlan(analysis, resume);
   const completeAnalysis = { ...analysis, tailoringPlan };
   return { ...completeAnalysis, report: buildDetailedReport(completeAnalysis, resume) };
 }
