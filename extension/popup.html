@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ResumeIQ</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header><span class="logo">R</span><div><h1>ResumeIQ</h1><p>Job Matcher</p></div></header>
+      <button id="extract" class="secondary" type="button">Get job description from page</button>
+      <label for="jobDescription">Job description</label>
+      <textarea id="jobDescription" maxlength="20000" placeholder="Select JD text on the page or paste it here"></textarea>
+      <label for="resume">Resume (PDF or DOCX, maximum 5 MB)</label>
+      <input id="resume" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+      <p id="error" role="alert"></p>
+      <button id="analyze" class="primary" type="button">Analyze match</button>
+      <section id="results" hidden>
+        <div class="score"><strong id="score">0%</strong><span>Role match</span></div>
+        <h2>Matched skills</h2><div id="matched" class="tags"></div>
+        <h2>Missing skills</h2><div id="missing" class="tags missing"></div>
+        <h2>Priority changes</h2><ol id="changes"></ol>
+        <a href="https://resume-iq-nine-ruby.vercel.app" target="_blank" rel="noreferrer">Open full ResumeIQ app</a>
+      </section>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

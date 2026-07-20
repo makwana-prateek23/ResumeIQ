@@ -43,3 +43,18 @@ test('rejects a spoofed PDF using its file signature', async () => {
     assert.equal((await response.json()).error, 'The uploaded file is not a valid PDF');
   });
 });
+
+test('allows a valid Chrome extension origin through CORS', async () => {
+  await withServer(async (baseUrl) => {
+    const origin = 'chrome-extension://gbmiehmhaoeoibkcoapajaebeipakjjf';
+    const response = await fetch(`${baseUrl}/api/analysis`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: origin,
+        'Access-Control-Request-Method': 'POST'
+      }
+    });
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get('access-control-allow-origin'), origin);
+  });
+});

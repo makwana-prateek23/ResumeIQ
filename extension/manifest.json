@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "ResumeIQ Job Matcher",
+  "version": "1.0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtbNaLGsvoAKKTeWe7CL+kFmbZLfF7PVpJEvLFLfPcgPffNrjTXB6vg1OSxTG8fm3/vOChCwN0CscPS1Ryuq17RanjBxURGqnjyoMOKiheBo3yIkF4VsZSSqyCiVio2rFAjFaFYNiYN75LwQR+lKXF3aTOCAPIRH8M7zLQKPZfOdRRQ/vnnlPGcU4YBfKdonto8o21v3qsdRhC6vbTigXraGZ0nOVyPDqofDZdovR7lpGsFXwNLOScchmj+JS4xLfdClKduRAHLBnwJdQaHrTckGxYQ0jze03TQcFZyPfw0La/31bQttnqV06UIBjCdItYTSCUgYJUt9U/nAV1VpYoQIDAQAB",
+  "description": "Analyze the current job description against a PDF or DOCX resume.",
+  "action": {
+    "default_title": "ResumeIQ Job Matcher",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["https://resumeiq-y88i.onrender.com/*"]
+}

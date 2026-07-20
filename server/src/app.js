@@ -14,7 +14,8 @@ if (env.trustProxy) app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || env.allowedOrigins.includes(origin)) return callback(null, true);
+    const isChromeExtension = origin === 'chrome-extension://gbmiehmhaoeoibkcoapajaebeipakjjf';
+    if (!origin || env.allowedOrigins.includes(origin) || isChromeExtension) return callback(null, true);
     return callback(Object.assign(new Error('Origin is not allowed by CORS'), { status: 403 }));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],

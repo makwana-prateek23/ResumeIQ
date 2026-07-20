@@ -70,13 +70,9 @@ Show API validation errors inside the popup. Do not store the resume after the r
 
 ## 6. Configure API CORS
 
-Load the unpacked extension once and copy its ID from `chrome://extensions`. Add its origin to Render alongside the production website:
+The downloadable package uses the stable extension ID `gbmiehmhaoeoibkcoapajaebeipakjjf`. The API permits only this exact extension origin, so the packaged version needs no additional Render environment setting.
 
-```text
-https://resume-iq-nine-ruby.vercel.app,chrome-extension://YOUR_EXTENSION_ID
-```
-
-Redeploy Render after saving `CORS_ORIGIN`. The final Chrome Web Store ID might differ, so update the value after publishing.
+If the Chrome Web Store assigns a different ID later, update the exact allowed extension origin in `server/src/app.js` and redeploy the API.
 
 ## 7. Test locally
 
