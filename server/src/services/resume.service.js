@@ -1,4 +1,5 @@
 import { PDFParse } from 'pdf-parse';
+import mammoth from 'mammoth';
 
 const SKILLS = [
   'javascript', 'typescript', 'react', 'angular', 'vue', 'node.js', 'express',
@@ -90,8 +91,16 @@ export function calculateExperienceFromDates(text) {
   return { years: Number((totalMonths / 12).toFixed(1)), totalMonths, ranges: ranges.map((range) => range.source), method: 'employmentDates' };
 }
 
-export async function extractResumeText(buffer) {
-  if (!Buffer.isBuffer(buffer) || buffer.length < 5 || buffer.subarray(0, 5).toString() !== '%PDF-') {
+function cleanExtractedText(text, fileType) {
+  const cleaned = text?.replace(/\u0000/g, '').trim();
+  if (!cleaned || cleaned.length < 30) {
+    throw Object.assign(new Error(`The ${fileType} contains no readable text`), { status: 422 });
+  }
+  return cleaned.slice(0, 100_000);
+}
+
+async function extractPdfText(buffer) {
+  if (buffer.length < 5 || buffer.subarray(0, 5).toString() !== '%PDF-') {
     throw Object.assign(new Error('The uploaded file is not a valid PDF'), { status: 415 });
   }
 
@@ -101,17 +110,36 @@ export async function extractResumeText(buffer) {
     if (result.total > 30) {
       throw Object.assign(new Error('Resume PDFs cannot exceed 30 pages'), { status: 422 });
     }
-    const text = result.text?.replace(/\u0000/g, '').trim();
-    if (!text || text.length < 30) {
-      throw Object.assign(new Error('The PDF contains no readable text'), { status: 422 });
-    }
-    return text.slice(0, 100_000);
+    return cleanExtractedText(result.text, 'PDF');
   } catch (error) {
     if (error.status) throw error;
     throw Object.assign(new Error('The PDF could not be processed'), { status: 422 });
   } finally {
     await parser.destroy().catch(() => {});
   }
+}
+
+async function extractDocxText(buffer) {
+  if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+    throw Object.assign(new Error('The uploaded file is not a valid Word document'), { status: 415 });
+  }
+  try {
+    const result = await mammoth.extractRawText({ buffer });
+    return cleanExtractedText(result.value, 'Word document');
+  } catch (error) {
+    if (error.status) throw error;
+    throw Object.assign(new Error('The Word document could not be processed'), { status: 422 });
+  }
+}
+
+export async function extractResumeText(buffer, file = {}) {
+  if (!Buffer.isBuffer(buffer)) {
+    throw Object.assign(new Error('The uploaded resume is invalid'), { status: 415 });
+  }
+  const filename = file.filename?.toLowerCase() ?? '';
+  if (filename.endsWith('.pdf') || file.mimetype === 'application/pdf') return extractPdfText(buffer);
+  if (filename.endsWith('.docx') || file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return extractDocxText(buffer);
+  throw Object.assign(new Error('Only PDF and Word (.docx) files are allowed'), { status: 415 });
 }
 
 export function parseResume(text) {

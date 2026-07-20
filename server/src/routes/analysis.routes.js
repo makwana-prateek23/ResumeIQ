@@ -10,10 +10,11 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { files: 1, fileSize: MAX_FILE_SIZE, fields: 2 },
   fileFilter(_req, file, callback) {
-    const hasPdfExtension = file.originalname.toLowerCase().endsWith('.pdf');
-    const hasPdfMime = file.mimetype === 'application/pdf';
-    if (!hasPdfExtension || !hasPdfMime) {
-      return callback(Object.assign(new Error('Only PDF files are allowed'), { status: 415 }));
+    const name = file.originalname.toLowerCase();
+    const isPdf = name.endsWith('.pdf') && file.mimetype === 'application/pdf';
+    const isDocx = name.endsWith('.docx') && file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    if (!isPdf && !isDocx) {
+      return callback(Object.assign(new Error('Only PDF and Word (.docx) files are allowed'), { status: 415 }));
     }
     return callback(null, true);
   }

@@ -8,7 +8,7 @@ const requestSchema = z.object({
 
 export async function analyzeResume(req, res) {
   if (!req.file) {
-    return res.status(400).json({ error: 'A resume PDF is required' });
+    return res.status(400).json({ error: 'A PDF or Word (.docx) resume is required' });
   }
 
   const validation = requestSchema.safeParse(req.body);
@@ -18,7 +18,10 @@ export async function analyzeResume(req, res) {
     });
   }
 
-  const resumeText = await extractResumeText(req.file.buffer);
+  const resumeText = await extractResumeText(req.file.buffer, {
+    filename: req.file.originalname,
+    mimetype: req.file.mimetype
+  });
   const resume = parseResume(resumeText);
   const analysis = analyzeMatch(resume, validation.data.jobDescription);
 

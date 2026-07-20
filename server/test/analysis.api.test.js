@@ -12,13 +12,24 @@ async function withServer(callback) {
   }
 }
 
-test('requires a resume PDF', async () => {
+test('requires a PDF or Word resume', async () => {
   await withServer(async (baseUrl) => {
     const form = new FormData();
     form.append('jobDescription', 'A'.repeat(120));
     const response = await fetch(`${baseUrl}/api/analysis`, { method: 'POST', body: form });
     assert.equal(response.status, 400);
-    assert.equal((await response.json()).error, 'A resume PDF is required');
+    assert.equal((await response.json()).error, 'A PDF or Word (.docx) resume is required');
+  });
+});
+
+test('rejects a spoofed Word document using its file signature', async () => {
+  await withServer(async (baseUrl) => {
+    const form = new FormData();
+    form.append('jobDescription', 'Software engineering role requiring React and Node.js. '.repeat(4));
+    form.append('resume', new Blob(['not really a docx'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), 'resume.docx');
+    const response = await fetch(`${baseUrl}/api/analysis`, { method: 'POST', body: form });
+    assert.equal(response.status, 415);
+    assert.equal((await response.json()).error, 'The uploaded file is not a valid Word document');
   });
 });
 

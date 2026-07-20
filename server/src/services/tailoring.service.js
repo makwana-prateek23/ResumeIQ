@@ -16,6 +16,21 @@ const TYPE_WEIGHT = {
   keyword: 1
 };
 
+const GAP_LOCATION_BY_TYPE = {
+  hardSkill: { primarySection: 'Technical Skills', supportingSection: 'Experience or Projects', missingPart: 'skill name and usage evidence' },
+  programmingLanguage: { primarySection: 'Technical Skills', supportingSection: 'Experience or Projects', missingPart: 'language name and implementation evidence' },
+  framework: { primarySection: 'Technical Skills', supportingSection: 'Experience or Projects', missingPart: 'framework name and project evidence' },
+  cloudTechnology: { primarySection: 'Technical Skills', supportingSection: 'Experience or Projects', missingPart: 'platform/service name and deployment evidence' },
+  database: { primarySection: 'Technical Skills', supportingSection: 'Experience or Projects', missingPart: 'database name and data-work evidence' },
+  devOpsTool: { primarySection: 'Technical Skills', supportingSection: 'Experience or Projects', missingPart: 'tool name and delivery/operations evidence' },
+  testingTool: { primarySection: 'Technical Skills', supportingSection: 'Experience or Projects', missingPart: 'testing tool and quality outcome' },
+  methodology: { primarySection: 'Technical Skills', supportingSection: 'Experience', missingPart: 'methodology and responsibility evidence' },
+  experience: { primarySection: 'Professional Summary', supportingSection: 'Experience', missingPart: 'required years or relevant responsibility evidence' },
+  certification: { primarySection: 'Certifications', supportingSection: null, missingPart: 'certification name and issuer' },
+  education: { primarySection: 'Education', supportingSection: null, missingPart: 'degree, field, or qualification' },
+  keyword: { primarySection: 'Experience', supportingSection: 'Projects', missingPart: 'JD terminology in an achievement bullet' }
+};
+
 function priorityScore(item) {
   const priority = item.priority === 'required' ? 30 : item.priority === 'preferred' ? 20 : 10;
   const status = item.status === 'missing' ? 20 : item.status === 'partial' ? 12 : item.coverage < 1 ? 5 : 0;
@@ -64,6 +79,7 @@ export function buildTailoringPlan(analysis) {
       importance: priorityScore(item),
       tfIdfScore: item.tfIdfScore,
       recommendedSection: SECTION_BY_TYPE[item.type] ?? 'relevant resume section',
+      location: GAP_LOCATION_BY_TYPE[item.type] ?? GAP_LOCATION_BY_TYPE.keyword,
       evidence: item.evidence || null,
       ...actionFor(item)
     }))

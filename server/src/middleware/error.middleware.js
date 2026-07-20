@@ -12,7 +12,7 @@ export function errorHandler(error, _req, res, _next) {
   if (error instanceof multer.MulterError) {
     status = error.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
     message = error.code === 'LIMIT_FILE_SIZE'
-      ? 'Resume PDF must be 5 MB or smaller'
+      ? 'Resume file must be 5 MB or smaller'
       : 'Invalid file upload';
   }
   const isServerError = status >= 500;
