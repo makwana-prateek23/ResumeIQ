@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useOutletContext } from 'react-router-dom';
 import { analyzeResume } from '../services/analysis.js';
 import resumeWorkspaceHero from '../assets/resume-workspace-hero.png';
 
@@ -25,6 +25,7 @@ function Panel({ title, children, className = '' }) {
 }
 
 function HomePage() {
+  const { resumeUploaded, setResumeUploaded, setUploadMessage } = useOutletContext();
   const [resume, setResume] = useState(null);
   const [jobDescription, setJobDescription] = useState('');
   const [result, setResult] = useState(null);
@@ -40,9 +41,18 @@ function HomePage() {
     setError(''); setResult(null);
     const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     const validExtension = file && /\.(pdf|docx)$/i.test(file.name);
-    if (file && (!validTypes.includes(file.type) || !validExtension)) { event.target.value = ''; setResume(null); return setError('Choose a valid PDF or Word (.docx) resume.'); }
-    if (file && file.size > 5 * 1024 * 1024) { event.target.value = ''; setResume(null); return setError('Resume file must be 5 MB or smaller.'); }
+    if (file && (!validTypes.includes(file.type) || !validExtension)) { event.target.value = ''; setResume(null); setResumeUploaded(false); return setError('Choose a valid PDF or Word (.docx) resume.'); }
+    if (file && file.size > 5 * 1024 * 1024) { event.target.value = ''; setResume(null); setResumeUploaded(false); return setError('Resume file must be 5 MB or smaller.'); }
     setResume(file);
+    setResumeUploaded(Boolean(file));
+    if (file) setUploadMessage('');
+  }
+
+  function openFormatting(event) {
+    if (resumeUploaded) return;
+    event.preventDefault();
+    setUploadMessage('Please upload a resume before using Edit & Format.');
+    document.querySelector('#resume-review')?.scrollIntoView({ behavior: 'smooth' });
   }
 
   function dropResume(event) {
@@ -137,7 +147,7 @@ function HomePage() {
 
       <section className="relative z-20 -mt-5 grid gap-4 px-3 md:grid-cols-3 sm:px-7" aria-label="Choose a resume tool">
         <a href="#resume-review" className="group rounded-2xl border border-indigo-200 bg-white p-5 shadow-xl shadow-slate-200/60 transition hover:-translate-y-1 hover:border-indigo-400"><div className="flex items-start justify-between"><span className="grid h-11 w-11 place-items-center rounded-xl bg-indigo-100 text-lg font-black text-indigo-700">01</span><span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-indigo-600">→</span></div><h2 className="mt-4 text-lg font-black">Review my resume</h2><p className="mt-2 text-sm leading-6 text-slate-500">Upload your resume and compare it with a job description.</p></a>
-        <Link to="/format" className="group rounded-2xl border border-cyan-200 bg-white p-5 shadow-xl shadow-slate-200/60 transition hover:-translate-y-1 hover:border-cyan-400"><div className="flex items-start justify-between"><span className="grid h-11 w-11 place-items-center rounded-xl bg-cyan-100 text-lg font-black text-cyan-700">02</span><span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-cyan-600">→</span></div><h2 className="mt-4 text-lg font-black">Edit & format</h2><p className="mt-2 text-sm leading-6 text-slate-500">Improve content and style it with simple Word-like controls.</p></Link>
+        <Link to="/format" onClick={openFormatting} className="group rounded-2xl border border-cyan-200 bg-white p-5 shadow-xl shadow-slate-200/60 transition hover:-translate-y-1 hover:border-cyan-400"><div className="flex items-start justify-between"><span className="grid h-11 w-11 place-items-center rounded-xl bg-cyan-100 text-lg font-black text-cyan-700">02</span><span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-cyan-600">→</span></div><h2 className="mt-4 text-lg font-black">Edit & format</h2><p className="mt-2 text-sm leading-6 text-slate-500">Upload a resume first, then improve its content and formatting.</p></Link>
         <Link to="/create" className="group rounded-2xl border border-emerald-200 bg-white p-5 shadow-xl shadow-slate-200/60 transition hover:-translate-y-1 hover:border-emerald-400"><div className="flex items-start justify-between"><span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-100 text-lg font-black text-emerald-700">03</span><span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-emerald-600">→</span></div><h2 className="mt-4 text-lg font-black">Create new resume</h2><p className="mt-2 text-sm leading-6 text-slate-500">Build a professional resume from guided content blocks.</p></Link>
       </section>
 
