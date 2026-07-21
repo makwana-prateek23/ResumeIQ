@@ -63,9 +63,11 @@ test('produces a bounded, deterministic weighted analysis', () => {
   assert.ok(result.overallScore >= 0 && result.overallScore <= 100);
   assert.ok(result.matchedSkills.includes('react'));
   assert.ok(result.missingSkills.includes('aws'));
-  assert.equal(result.weights.requirements, 50);
-  assert.equal(result.weights.experience, 25);
-  assert.equal(result.details.scoringScope, 'mandatory skills, experience, education, certifications, and work authorization');
+  assert.equal(result.weights.requirements, 35);
+  assert.equal(result.weights.experience, 15);
+  assert.equal(result.details.scoringScope, 'ATS terminology plus evidence-backed skills, responsibilities, experience, education, domain knowledge, and work authorization');
+  assert.ok(Number.isInteger(result.atsScore));
+  assert.ok(Number.isInteger(result.recruiterReadinessScore));
   assert.ok(result.confidence >= 50 && result.confidence <= 100);
   assert.ok(result.requirements.every((item) => item.source && item.status));
 });
@@ -147,9 +149,9 @@ test('scores technical keywords, experience, and required education without addi
   assert.ok([...types].some((type) => ['database', 'devOpsTool', 'cloudTechnology', 'hardSkill', 'industryTerm'].includes(type)));
   assert.equal(types.has('softSkill'), false);
   assert.equal(types.has('education'), true);
-  assert.equal(types.has('responsibility'), false);
-  assert.equal(result.missingKeywords.some((term) => /friendly|consistent|weekly reports/i.test(term)), false);
-  assert.deepEqual(Object.keys(result.breakdown).sort(), ['education', 'experience', 'requirements']);
+  assert.equal(types.has('responsibility'), true);
+  assert.equal(result.missingSkills.some((term) => /friendly|consistent|weekly reports/i.test(term)), false);
+  assert.deepEqual(Object.keys(result.breakdown).sort(), ['education', 'experience', 'requirements', 'responsibilities', 'title']);
   assert.ok(result.requirements.every((item) => Number.isFinite(item.tfIdfScore) && item.tfIdfScore > 0));
 });
 
@@ -175,11 +177,33 @@ test('checks work authorization alternatives and returns exact edit instructions
   const kubernetes = result.tailoringPlan.keywordActions.find((item) => item.term.includes('kubernetes'));
   assert.equal(authorization.status, 'matched');
   assert.equal(result.breakdown.education, 100);
-  assert.equal(result.breakdown.workAuthorization, 100);
+  assert.equal(result.breakdown.workAuthorization, 70);
   assert.ok(['addNewBullet', 'reviseExistingBullet'].includes(kubernetes.action));
   assert.ok(kubernetes.recommendedSection);
   assert.ok(kubernetes.suggestedText.includes('kubernetes'));
   assert.deepEqual(kubernetes.inputsNeeded, ['How the requirement was used', 'Task or scope', 'Measurable result']);
+});
+
+test('rejects sentence fragments and normalizes platform and healthcare JD concepts', () => {
+  const result = analyzeMatch(parseResume(`
+    Summary
+    Engineer experienced with AWS, OpenTelemetry, distributed systems, IAM, OAuth, and API security.
+    Experience
+    - Built reliable AWS services with OpenTelemetry monitoring.
+  `), `
+    Senior Software Engineer II
+    Deep AWS + infrastructure experience.
+    Auth/authz experience (IAM, OAuth, API gateways, service-to-service auth, etc.).
+    Improve AI/ML infrastructure for model development, training, and deployment.
+    Maintain the security of protected patient health information and ensure compliance with relevant regulations.
+    Contribute to the development of APIs and interfaces for generative AI capabilities.
+  `);
+  const terms = result.requirements.map((item) => item.term);
+  assert.ok(terms.includes('aws'));
+  assert.ok(terms.includes('protected health information'));
+  assert.ok(terms.includes('api development'));
+  assert.equal(result.matchedSkills.concat(result.missingSkills).some((term) => term === 'etc' || /security protected patient|deep aws|improve ai ml infrastructure|software engineer ii/i.test(term)), false);
+  assert.equal(result.matchedSkills.some((term) => /engineer/i.test(term)), false);
 });
 
 test('uses TF-IDF weights to rank technical JD phrases deterministically', () => {

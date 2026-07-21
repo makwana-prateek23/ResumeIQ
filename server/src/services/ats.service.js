@@ -3,10 +3,13 @@ import { buildTailoringPlan } from './tailoring.service.js';
 import { buildDetailedReport } from './report.service.js';
 
 const BASE_WEIGHTS = Object.freeze({
-  requirements: 50,
-  experience: 25,
-  education: 15,
-  workAuthorization: 10
+  requirements: 35,
+  responsibilities: 20,
+  experience: 15,
+  title: 10,
+  education: 10,
+  domainKnowledge: 5,
+  workAuthorization: 5
 });
 
 const SKILL_TYPES = new Set([
@@ -14,7 +17,7 @@ const SKILL_TYPES = new Set([
   'database', 'devOpsTool', 'testingTool', 'methodology'
 ]);
 
-const SCORED_TYPES = new Set([...SKILL_TYPES, 'experience', 'education', 'certification', 'workAuthorization']);
+const SCORED_TYPES = new Set([...SKILL_TYPES, 'experience', 'education', 'certification', 'workAuthorization', 'responsibility', 'domainKnowledge']);
 
 function clamp(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -26,12 +29,12 @@ function requiredExperience(text) {
   return matches.length ? Math.max(...matches.map((match) => Number(match[1]) || numberWords[match[1].toLowerCase()])) : 0;
 }
 
-function scoreRequirements(matches) {
+function scoreRequirements(matches, coverageField = 'coverage') {
   if (!matches.length) return null;
   const priorityWeight = { required: 1.5, preferred: 1, unspecified: 0.75 };
   const weightFor = (match) => priorityWeight[match.priority] * Math.max(match.tfIdfScore ?? 1, 0.1);
   const total = matches.reduce((sum, match) => sum + weightFor(match), 0);
-  const earned = matches.reduce((sum, match) => sum + match.coverage * weightFor(match), 0);
+  const earned = matches.reduce((sum, match) => sum + (match[coverageField] ?? match.coverage) * weightFor(match), 0);
   return clamp((earned / total) * 100);
 }
 
@@ -61,9 +64,9 @@ function scoreEducation(requirementMatches, resume) {
   return requiredLevel === 0 ? 100 : clamp((resumeLevel / requiredLevel) * 100);
 }
 
-function scoreCategory(matches, type) {
+function scoreCategory(matches, type, coverageField = 'coverage') {
   const category = matches.filter((match) => match.type === type);
-  return category.length ? scoreRequirements(category) : null;
+  return category.length ? scoreRequirements(category, coverageField) : null;
 }
 
 function searchabilityChecks(resume) {
@@ -115,17 +118,29 @@ export function analyzeMatch(resume, jobDescription) {
   const jobTitle = extractJobTitle(jobDescription);
   const searchability = searchabilityChecks(resume);
   const resumeQuality = qualityChecks(resume);
+  const jobTitleScore = scoreTitle(jobTitle, resume);
   const experienceScore = requiredYears
     ? clamp((resume.experienceYears / requiredYears) * 100)
     : null;
 
   const breakdown = {
     requirements: scoreRequirements(requirementMatches.filter((item) => SKILL_TYPES.has(item.type) || item.type === 'certification')),
+    responsibilities: scoreCategory(requirementMatches, 'responsibility'),
     experience: experienceScore,
+    title: jobTitleScore,
     education: scoreEducation(requirementMatches, resume),
+    domainKnowledge: scoreCategory(requirementMatches, 'domainKnowledge'),
     workAuthorization: scoreCategory(requirementMatches, 'workAuthorization')
   };
-  const jobTitleScore = scoreTitle(jobTitle, resume);
+  const atsBreakdown = {
+    requirements: scoreRequirements(requirementMatches.filter((item) => SKILL_TYPES.has(item.type) || item.type === 'certification'), 'lexicalCoverage'),
+    responsibilities: scoreCategory(requirementMatches, 'responsibility', 'lexicalCoverage'),
+    experience: experienceScore,
+    title: jobTitleScore,
+    education: scoreEducation(requirementMatches, resume),
+    domainKnowledge: scoreCategory(requirementMatches, 'domainKnowledge', 'lexicalCoverage'),
+    workAuthorization: scoreCategory(requirementMatches, 'workAuthorization', 'lexicalCoverage')
+  };
 
   const matched = requirementMatches.filter((item) => item.status === 'matched');
   const partiallyMatched = requirementMatches.filter((item) => item.status === 'partial');
@@ -146,17 +161,18 @@ export function analyzeMatch(resume, jobDescription) {
   ];
 
   const analysis = {
-    overallScore: weightedOverall(breakdown),
+    overallScore: clamp((weightedOverall(atsBreakdown) * 0.55) + (weightedOverall(breakdown) * 0.45)),
+    atsScore: weightedOverall(atsBreakdown),
+    recruiterReadinessScore: weightedOverall(breakdown),
+    mandatoryCoverage: scoreRequirements(requirementMatches.filter((item) => item.priority === 'required'), 'lexicalCoverage') ?? 100,
     confidence,
     breakdown: Object.fromEntries(Object.entries(breakdown).filter(([, value]) => value !== null)),
     weights: Object.fromEntries(Object.entries(BASE_WEIGHTS).filter(([key]) => breakdown[key] !== null)),
     jobTitle: { target: jobTitle || null, score: jobTitleScore },
     roleSuitability: {
       targetRole: jobTitle || null,
-      score: jobTitleScore === null
-        ? weightedOverall(breakdown)
-        : clamp((jobTitleScore * 0.2) + (weightedOverall(breakdown) * 0.8)),
-      label: 'Role suitability based on title, mandatory skills, experience, education, and work authorization'
+      score: clamp((weightedOverall(atsBreakdown) * 0.55) + (weightedOverall(breakdown) * 0.45)),
+      label: 'Combined ATS coverage and recruiter-ready evidence'
     },
     requirements: requirementMatches,
     matched,
@@ -180,7 +196,7 @@ export function analyzeMatch(resume, jobDescription) {
       experienceCalculationMethod: resume.experienceCalculation.method,
       extractedRequirementCount: requirements.length,
       ignoredNonTechnicalRequirementCount: extractedRequirements.length - requirements.length,
-      scoringScope: 'mandatory skills, experience, education, certifications, and work authorization'
+      scoringScope: 'ATS terminology plus evidence-backed skills, responsibilities, experience, education, domain knowledge, and work authorization'
     }
   };
 

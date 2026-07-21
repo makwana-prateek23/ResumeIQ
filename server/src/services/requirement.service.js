@@ -23,6 +23,7 @@ const SYNONYMS = new Map([
   ['postgres', 'postgresql'], ['amazon web services', 'aws'],
   ['google cloud platform', 'gcp'], ['microsoft azure', 'azure'],
   ['project mgmt', 'project management'], ['quality assurance', 'qa'],
+  ['development apis', 'api development'], ['development of apis', 'api development'],
   ['continuous integration', 'ci'], ['continuous deployment', 'cd'],
   ['usc', 'us citizen'], ['u.s. citizen', 'us citizen'], ['united states citizen', 'us citizen'],
   ['gc', 'green card'], ['permanent resident', 'green card']
@@ -30,8 +31,29 @@ const SYNONYMS = new Map([
 
 const GENERIC = new Set([
   'activities', 'candidate', 'company', 'environment', 'information', 'position',
-  'responsibilities', 'responsibility', 'role', 'team', 'work'
+  'responsibilities', 'responsibility', 'role', 'team', 'work', 'etc', 'engineering',
+  'engineer', 'engineers', 'solution', 'solutions'
 ]);
+
+const TERM_SPECS = [
+  ['aws', ['amazon web services'], 'cloudTechnology'], ['cloud infrastructure', ['infrastructure'], 'cloudTechnology'],
+  ['platform reliability', [], 'hardSkill'], ['observability', [], 'devOpsTool'], ['opentelemetry', ['otel'], 'devOpsTool'],
+  ['networking', ['network integrations'], 'hardSkill'], ['distributed systems', [], 'hardSkill'],
+  ['authentication', ['auth'], 'hardSkill'], ['authorization', ['authz'], 'hardSkill'],
+  ['iam', ['identity and access management'], 'hardSkill'], ['oauth', [], 'hardSkill'],
+  ['api gateways', ['api gateway'], 'hardSkill'], ['service-to-service authentication', ['service to service auth'], 'hardSkill'],
+  ['enterprise security and compliance', ['enterprise security compliance'], 'domainKnowledge'],
+  ['protected health information', ['phi', 'patient health information'], 'domainKnowledge'],
+  ['healthcare compliance', ['healthcare regulations'], 'domainKnowledge'],
+  ['sql', ['database querying language'], 'database'], ['data pipelines', ['data pipeline'], 'devOpsTool'],
+  ['full-stack web applications', ['full stack web applications', 'full-stack web development'], 'hardSkill'],
+  ['high test coverage', ['automated testing', 'test coverage'], 'testingTool'],
+  ['generative ai', ['genai'], 'hardSkill'], ['large language models', ['llm', 'llms'], 'hardSkill'],
+  ['amazon bedrock', ['bedrock'], 'framework'], ['langgraph', [], 'framework'], ['litellm', [], 'framework'],
+  ['model context protocol', ['mcp'], 'framework'], ['openai api', ['openai apis'], 'framework'],
+  ['claude code', [], 'framework'], ['prompt engineering', [], 'hardSkill'],
+  ['api development', ['development of apis'], 'hardSkill']
+];
 
 const BOILERPLATE_PATTERN = /\b(equal opportunity|affirmative action|accommodation|disability|disabled|veteran|gender identity|sexual orientation|race|religion|national origin|privacy policy|recruiting process|application process|background check|drug test|pay transparency|salary range|compensation range|benefits package|submit (?:a )?request|contact recruiting|service-now\.com|askeg)\b/i;
 const TECHNICAL_CONTEXT_PATTERN = /\b(experience with|knowledge of|proficien(?:cy|t) in|familiar(?:ity)? with|expertise in|hands-on|skilled in|ability to (?:use|operate|configure|develop|design|implement)|certified in|working with|technologies include|tools include|technical skills?)\b/i;
@@ -116,26 +138,61 @@ function cleanChunk(chunk) {
     .split(' ')
     .filter((word) => word && !STOP_WORDS.has(word))
     .join(' ')
-    .replace(/^(skills?|proficiency|familiarity|understanding|expertise)\s+(in|of|with)?\s*/i, '')
+    .replace(/^(skills?|proficiency|familiarity|understanding|expertise|deep|some)\s+(in|of|with)?\s*/i, '')
+    .replace(/\betc\b/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
 function candidatesFromSegment(segment) {
   return segment
-    .split(/[,;:()|]|\s+(?:and|or|with|using|including|such as|as well as|for|to)\s+/i)
+    .split(/[,;:()|]|\s+\+\s+|\s+(?:and|or|with|using|including|such as|as well as|for|to)\s+/i)
     .map(cleanChunk)
     .filter(Boolean)
     .flatMap((chunk) => {
       const words = chunk.split(' ');
       if (words.length <= 4) return [chunk];
-      const phrases = [];
-      for (let size = 3; size >= 2; size -= 1) {
-        for (let index = 0; index <= words.length - size; index += 1) {
-          phrases.push(words.slice(index, index + size).join(' '));
-        }
-      }
-      return phrases;
+      return [];
     });
+}
+
+function addKnownTerms(entries, segments) {
+  for (const segment of segments) {
+    const normalizedSegment = normalizeTerm(segment);
+    for (const [term, aliases, type] of TERM_SPECS) {
+      if (![term, ...aliases].some((variant) => normalizedSegment.includes(normalizeTerm(variant)))) continue;
+      const existing = entries.get(term);
+      const priority = priorityFor(segment);
+      entries.set(term, {
+        term, aliases, type,
+        priority: existing?.priority === 'required' || priority === 'required' ? 'required' : priority,
+        jobDescriptionCount: (existing?.jobDescriptionCount ?? 0) + 1,
+        source: existing?.source ?? segment.slice(0, 240)
+      });
+    }
+  }
+}
+
+function addResponsibilities(entries, segments) {
+  const actionPattern = /^(?:develop|implement|design|architect|maintain|improve|create|build|partner|mentor|coach|analyze|contribute|work closely|ensure)\b/i;
+  for (const segment of segments) {
+    if (!actionPattern.test(segment.trim())) continue;
+    const term = normalizeTerm(segment).split(' ').slice(0, 12).join(' ');
+    if (term.split(' ').length < 3) continue;
+    entries.set(term, {
+      term, aliases: [], type: 'responsibility', priority: priorityFor(segment),
+      jobDescriptionCount: 1, source: segment.slice(0, 240)
+    });
+  }
+}
+
+function validCandidate(term, type) {
+  const words = term.split(' ');
+  if (!term || words.length > 4 || words.some((word) => GENERIC.has(word))) return false;
+  if (/\betc\b|\+|https?|www\.|\.com\b/i.test(term)) return false;
+  if (/\b(?:software|platform|data|machine learning|ai ml)?\s*engineer(?:ing)?\s+(?:i|ii|iii|iv|senior|lead)\b/i.test(term)) return false;
+  if (/^(?:improve|maintain|contribute|partner|work|analyze|architect)\b/i.test(term) && type !== 'responsibility') return false;
+  return true;
 }
 
 function deduplicateRequirements(items) {
@@ -170,6 +227,9 @@ export function extractRequirements(jobDescription) {
     .map((value) => value.trim())
     .filter((value) => value && !isBoilerplateSegment(value));
 
+  addKnownTerms(entries, segments);
+  addResponsibilities(entries, segments);
+
   for (const segment of segments) {
     for (const pair of acronymPairs(segment)) {
       const existing = entries.get(pair.term);
@@ -186,14 +246,15 @@ export function extractRequirements(jobDescription) {
     for (const rawTerm of candidatesFromSegment(segment)) {
       const term = normalizeTerm(rawTerm);
       const words = term.split(' ');
-      if (!term || words.length > 4 || /https?|www\.|\.com\b|^[\d.,$£€]+$/.test(term) || (words.length === 1 && (term.length < 3 || GENERIC.has(term)))) continue;
+      const type = typeFor(term, technicalSegments.has(segment) ? `technical skills ${segment}` : segment);
+      if (!validCandidate(term, type) || /^[\d.,$£€]+$/.test(term) || (words.length === 1 && term.length < 3)) continue;
       const existing = entries.get(term);
       const priority = priorityFor(segment);
       const occurrence = existing?.jobDescriptionCount ?? 0;
       entries.set(term, {
         term,
         aliases: existing?.aliases ?? [],
-        type: typeFor(term, technicalSegments.has(segment) ? `technical skills ${segment}` : segment),
+        type,
         priority: existing?.priority === 'required' || priority === 'required' ? 'required' : priority,
         jobDescriptionCount: occurrence + 1,
         source: existing?.source ?? segment.slice(0, 240)
@@ -311,9 +372,12 @@ export function matchRequirements(requirements, resume) {
     }
 
     if (resumeCount > 0 && !evidence) {
-      const line = resume.text.split(/\r?\n/).find((value) => occurrenceCount(value, requirement.term, requirement.aliases) > 0);
+      const strongestSection = ['experience', 'projects', 'summary', 'skills', 'education', 'certifications']
+        .find((section) => occurrenceCount(resume.sections[section] || '', requirement.term, requirement.aliases) > 0);
+      const searchableText = strongestSection ? resume.sections[strongestSection] : resume.text;
+      const line = searchableText.split(/\r?\n/).find((value) => occurrenceCount(value, requirement.term, requirement.aliases) > 0);
       evidence = line?.trim().slice(0, 240) ?? requirement.term;
-      evidenceSection = sectionEntries.find(([, text]) => occurrenceCount(text, requirement.term, requirement.aliases) > 0)?.[0] ?? 'resume';
+      evidenceSection = strongestSection ?? sectionEntries.find(([, text]) => occurrenceCount(text, requirement.term, requirement.aliases) > 0)?.[0] ?? 'resume';
     } else {
       const requiredTokens = termTokens(requirement.term);
       let best = { overlap: 0, line: '' };
@@ -329,9 +393,10 @@ export function matchRequirements(requirements, resume) {
       }
     }
 
-    const coverage = status === 'matched'
-      ? (resumeCount > 0 ? Math.min(1, resumeCount / requirement.jobDescriptionCount) : 0.8)
-      : status === 'partial' ? 0.5 : 0;
-    return { ...requirement, status, matchType, resumeCount, coverage, evidence, evidenceSection };
+    const evidenceStrength = ({ experience: 1, projects: 0.9, summary: 0.7, skills: 0.5, education: 1, certifications: 1, resume: 0.4 })[evidenceSection] ?? 0.5;
+    const lexicalCoverage = status === 'matched' ? 1 : status === 'partial' ? 0.6 : 0;
+    const coverage = lexicalCoverage * evidenceStrength;
+    if (status === 'matched' && evidenceStrength < 0.7 && requirement.priority === 'required') status = 'partial';
+    return { ...requirement, status, matchType, resumeCount, coverage, lexicalCoverage, evidenceStrength, evidence, evidenceSection };
   });
 }

@@ -4,6 +4,8 @@ const SECTION_BY_TYPE = {
   certification: 'certifications',
   education: 'education',
   workAuthorization: 'work authorization or additional information',
+  responsibility: 'most relevant experience bullet',
+  domainKnowledge: 'experience or projects',
   experience: 'professional experience',
   keyword: 'most relevant experience bullet'
 };
@@ -14,6 +16,8 @@ const TYPE_WEIGHT = {
   hardSkill: 4,
   experience: 4,
   education: 3,
+  responsibility: 4,
+  domainKnowledge: 4,
   softSkill: 2,
   keyword: 1
 };
@@ -31,6 +35,8 @@ const GAP_LOCATION_BY_TYPE = {
   certification: { primarySection: 'Certifications', supportingSection: null, missingPart: 'certification name and issuer' },
   education: { primarySection: 'Education', supportingSection: null, missingPart: 'degree, field, or qualification' },
   workAuthorization: { primarySection: 'Work Authorization', supportingSection: 'Header or Additional Information', missingPart: 'verified authorization status using truthful wording' },
+  responsibility: { primarySection: 'Experience', supportingSection: 'Projects', missingPart: 'responsibility evidence with scope and outcome' },
+  domainKnowledge: { primarySection: 'Experience', supportingSection: 'Professional Summary', missingPart: 'domain-specific evidence and context' },
   keyword: { primarySection: 'Experience', supportingSection: 'Projects', missingPart: 'JD terminology in an achievement bullet' }
 };
 

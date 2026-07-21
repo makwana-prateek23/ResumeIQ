@@ -19,7 +19,7 @@ function groupByType(requirements) {
 export function buildDetailedReport(analysis, resume) {
   const grouped = groupByType(analysis.requirements);
   const skills = analysis.requirements.filter((item) => SKILL_TYPES.has(item.type));
-  const responsibilities = [];
+  const responsibilities = analysis.requirements.filter((item) => item.type === 'responsibility');
   const projectEvidence = analysis.matched.filter((item) => item.evidenceSection === 'projects');
 
   const categoryScores = {
