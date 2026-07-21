@@ -22,8 +22,14 @@ function cleanImportedResume(data) {
   for (const item of data.experience || []) {
     const realHeading = (item.role && !/^role title$/i.test(item.role)) || (item.company && !/^company(?: name)?$/i.test(item.company));
     if (realHeading) {
-      current = { ...item, bullets: [] };
-      cleanedExperience.push(current);
+      const normalizedRole = String(item.role || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const currentRole = String(current?.role || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      if (current && normalizedRole && normalizedRole === currentRole && !current.start && !current.end && current.bullets.length === 0) {
+        Object.assign(current, item, { bullets: [] });
+      } else {
+        current = { ...item, bullets: [] };
+        cleanedExperience.push(current);
+      }
     } else if (!current) {
       continue;
     }
