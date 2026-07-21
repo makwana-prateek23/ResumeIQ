@@ -78,8 +78,9 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       const { jsPDF } = await import('jspdf');
       const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
       const margin = style.margin + 14;
+      const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const width = pdf.internal.pageSize.getWidth() - margin * 2;
+      const width = pageWidth - margin * 2;
       let y = margin;
       const text = (value, size = style.size, weight = 'normal', gap = 5, color = '#334155') => {
         if (!value) return;
@@ -98,9 +99,16 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         pdf.line(margin + labelWidth + 10, y - 3, margin + width, y - 3);
         y += 15;
       };
-      text(resume.name || 'YOUR NAME', 22, 'bold', 2, '#0f172a');
-      text(resume.role || 'TARGET ROLE', 12, 'bold', 3, style.accent);
-      text([resume.location, resume.phone, resume.email, resume.linkedin].filter(Boolean).join('  •  '), 9, 'normal', 8);
+      const centeredText = (value, size, weight = 'normal', gap = 4, color = '#000000') => {
+        if (!value) return;
+        pdf.setFont('helvetica', weight); pdf.setFontSize(size); pdf.setTextColor(color);
+        const lines = pdf.splitTextToSize(String(value), width);
+        lines.forEach((line) => { pdf.text(line, pageWidth / 2, y, { align: 'center' }); y += size * style.spacing; });
+        y += gap;
+      };
+      centeredText(resume.name || (resume.imported ? '' : 'YOUR NAME'), 22, 'bold', 2, '#000000');
+      centeredText(resume.role || (resume.imported ? '' : 'TARGET ROLE'), 12, 'bold', 3, '#000000');
+      centeredText([resume.location, resume.phone, resume.email, resume.linkedin].filter(Boolean).join('  •  '), 9, 'normal', 8, '#334155');
       const pdfSections = {
         summary: () => { heading('Professional summary'); text(resume.summary); },
         experience: () => { heading('Experience'); resume.experience.forEach((item) => { text([item.role, item.company].filter(Boolean).join(' — '), 11, 'bold', 1, '#0f172a'); text([item.location, [item.start, item.end].filter(Boolean).join(' – ')].filter(Boolean).join('  |  '), 9, 'normal', 2); item.bullets.filter(Boolean).forEach((bullet) => text(`• ${bullet}`, style.size, 'normal', 1)); }); },
