@@ -138,10 +138,9 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10); pdf.setTextColor(style.accent);
         const label = value.toUpperCase();
         pdf.text(label, margin, y);
-        const labelWidth = pdf.getTextWidth(label);
         pdf.setDrawColor(style.accent); pdf.setLineWidth(0.5);
-        pdf.line(margin + labelWidth + 10, y - 3, margin + width, y - 3);
-        y += 15;
+        pdf.line(margin, y + 3, margin + width, y + 3);
+        y += 16;
       };
       const centeredText = (value, size, weight = 'normal', gap = 4, color = '#000000') => {
         if (!value) return;
@@ -186,7 +185,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
 }
 
 function ResumeSection({ title, color, children }) {
-  return <section className="mt-6 text-slate-700"><div className="mb-2 flex items-center gap-3"><h2 className="shrink-0 text-[1.05em] font-black uppercase tracking-[0.14em]" style={{ color }}>{title}</h2><span aria-hidden="true" className="h-px min-w-0 flex-1" style={{ backgroundColor: `${color}55` }} /></div><div>{children}</div></section>;
+  return <section className="mt-6 text-slate-700"><div className="mb-2"><h2 className="text-[1.05em] font-black uppercase tracking-[0.14em]" style={{ color }}>{title}</h2><div aria-hidden="true" className="mt-0.5 h-px w-full" style={{ backgroundColor: `${color}88` }} /></div><div>{children}</div></section>;
 }
 
 export default ResumeWorkspace;
