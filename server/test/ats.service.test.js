@@ -63,9 +63,9 @@ test('produces a bounded, deterministic weighted analysis', () => {
   assert.ok(result.overallScore >= 0 && result.overallScore <= 100);
   assert.ok(result.matchedSkills.includes('react'));
   assert.ok(result.missingSkills.includes('aws'));
-  assert.equal(result.weights.requirements, 70);
-  assert.equal(result.weights.experience, 30);
-  assert.equal(result.details.scoringScope, 'technical keywords and experience only');
+  assert.equal(result.weights.requirements, 50);
+  assert.equal(result.weights.experience, 25);
+  assert.equal(result.details.scoringScope, 'mandatory skills, experience, education, certifications, and work authorization');
   assert.ok(result.confidence >= 50 && result.confidence <= 100);
   assert.ok(result.requirements.every((item) => item.source && item.status));
 });
@@ -95,8 +95,9 @@ test('extracts domain phrases that are not in a fixed software dictionary', () =
   assert.ok(result.missingKeywords.includes('equipment installation'));
   assert.ok(result.matched.some((item) => item.term.includes('commissioning')));
   const equipmentAction = result.tailoringPlan.keywordActions.find((item) => item.term === 'equipment installation');
-  assert.equal(equipmentAction.action, 'addKeyword');
-  assert.match(equipmentAction.guidance, /^Add /);
+  assert.ok(['addNewBullet', 'reviseExistingBullet'].includes(equipmentAction.action));
+  assert.ok(equipmentAction.suggestedText.includes('equipment installation'));
+  assert.ok(equipmentAction.inputsNeeded.length > 0);
   assert.equal(equipmentAction.location.primarySection, 'New Technical Skills section');
   assert.ok(['Experience', 'Experience or Projects'].includes(equipmentAction.location.supportingSection));
   assert.match(equipmentAction.location.missingPart, /skill name/i);
@@ -134,7 +135,7 @@ test('returns the complete explainable report contract', () => {
   assert.ok(Number.isInteger(result.roleSuitability.score));
 });
 
-test('scores and recommends only technical keywords and experience', () => {
+test('scores technical keywords, experience, and required education without adding soft skills', () => {
   const result = analyzeMatch(parseResume(resumeText), `
     Data Platform Engineer
     Five years of experience and PostgreSQL, Docker, AWS, and data pipeline knowledge are required.
@@ -145,11 +146,40 @@ test('scores and recommends only technical keywords and experience', () => {
   assert.ok(types.has('experience'));
   assert.ok([...types].some((type) => ['database', 'devOpsTool', 'cloudTechnology', 'hardSkill', 'industryTerm'].includes(type)));
   assert.equal(types.has('softSkill'), false);
-  assert.equal(types.has('education'), false);
+  assert.equal(types.has('education'), true);
   assert.equal(types.has('responsibility'), false);
-  assert.equal(result.missingKeywords.some((term) => /friendly|consistent|bachelor|weekly reports/i.test(term)), false);
-  assert.deepEqual(Object.keys(result.breakdown).sort(), ['experience', 'requirements']);
+  assert.equal(result.missingKeywords.some((term) => /friendly|consistent|weekly reports/i.test(term)), false);
+  assert.deepEqual(Object.keys(result.breakdown).sort(), ['education', 'experience', 'requirements']);
   assert.ok(result.requirements.every((item) => Number.isFinite(item.tfIdfScore) && item.tfIdfScore > 0));
+});
+
+test('checks work authorization alternatives and returns exact edit instructions', () => {
+  const result = analyzeMatch(parseResume(`
+    Taylor Engineer
+    Summary
+    US Citizen and platform engineer.
+    Skills
+    Python, AWS
+    Experience
+    Platform Engineer | Example Corp | Jan 2020 - Present
+    - Built Python APIs for cloud services.
+    Education
+    Bachelor of Science in Computer Science
+  `), `
+    Senior Platform Engineer
+    Python and Kubernetes are mandatory.
+    A bachelor's degree is required.
+    Applicant must be a US Citizen or Green Card holder.
+  `);
+  const authorization = result.requirements.find((item) => item.term === 'us citizen or green card');
+  const kubernetes = result.tailoringPlan.keywordActions.find((item) => item.term.includes('kubernetes'));
+  assert.equal(authorization.status, 'matched');
+  assert.equal(result.breakdown.education, 100);
+  assert.equal(result.breakdown.workAuthorization, 100);
+  assert.ok(['addNewBullet', 'reviseExistingBullet'].includes(kubernetes.action));
+  assert.ok(kubernetes.recommendedSection);
+  assert.ok(kubernetes.suggestedText.includes('kubernetes'));
+  assert.deepEqual(kubernetes.inputsNeeded, ['How the requirement was used', 'Task or scope', 'Measurable result']);
 });
 
 test('uses TF-IDF weights to rank technical JD phrases deterministically', () => {

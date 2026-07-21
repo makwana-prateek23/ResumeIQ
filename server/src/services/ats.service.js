@@ -27,7 +27,7 @@ function requiredExperience(text) {
 }
 
 function scoreRequirements(matches) {
-  if (!matches.length) return 0;
+  if (!matches.length) return null;
   const priorityWeight = { required: 1.5, preferred: 1, unspecified: 0.75 };
   const weightFor = (match) => priorityWeight[match.priority] * Math.max(match.tfIdfScore ?? 1, 0.1);
   const total = matches.reduce((sum, match) => sum + weightFor(match), 0);
@@ -117,7 +117,7 @@ export function analyzeMatch(resume, jobDescription) {
   const resumeQuality = qualityChecks(resume);
   const experienceScore = requiredYears
     ? clamp((resume.experienceYears / requiredYears) * 100)
-    : (resume.sections.experience ? 100 : 0);
+    : null;
 
   const breakdown = {
     requirements: scoreRequirements(requirementMatches.filter((item) => SKILL_TYPES.has(item.type) || item.type === 'certification')),

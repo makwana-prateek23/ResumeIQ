@@ -107,39 +107,70 @@ function actionFor(item, location) {
   const section = location.primarySection ?? SECTION_BY_TYPE[item.type] ?? 'most relevant resume section';
   if (item.type === 'workAuthorization') {
     return {
-      action: item.status === 'missing' ? 'verifyThenAdd' : 'keepEvidence',
+      action: item.status === 'missing' ? 'confirmationRequired' : 'keepEvidence',
+      suggestionType: 'confirmation',
       guidance: item.status === 'missing'
-        ? `Verify your status first. Only if true, add the exact work-authorization status requested by the employer to ${section}.`
+        ? `Confirmation required: select your work-authorization status and place it in ${section}.`
         : `Keep the verified work-authorization evidence in ${section}.`,
+      originalText: location.targetElement ?? null,
+      suggestedText: `Work Authorization: [select your actual status]`,
+      inputsNeeded: ['Actual work-authorization status'],
       bulletPrompt: null
     };
   }
   if (item.type === 'education' && item.status === 'missing') {
     return {
       action: 'verifyEducation',
-      guidance: `The JD requests ${item.term}. Verify the Education section; do not add or upgrade a degree unless it was earned.`,
+      suggestionType: 'confirmation',
+      guidance: `Confirmation required: the JD requests ${item.term}. Select the matching earned qualification, if applicable.`,
+      originalText: location.targetElement ?? null,
+      suggestedText: `[Degree] in [Field] | [Institution] | [Graduation year]`,
+      inputsNeeded: ['Earned degree', 'Field of study', 'Institution', 'Graduation year'],
       bulletPrompt: null
     };
   }
   if (item.status === 'missing') {
+    const reviseExisting = Boolean(location.targetElement);
+    const suggestedText = reviseExisting
+      ? `${location.targetElement.replace(/[.!]?$/, '')}; used ${item.term} to [describe how], improving [metric or business result].`
+      : `[Action verb] used ${item.term} to [task or responsibility], resulting in [measurable outcome].`;
     return {
-      action: 'addKeyword',
-      guidance: `Add "${item.term}" to ${section}.`,
-      bulletPrompt: `[Action verb] used ${item.term} to [task or responsibility], resulting in [measurable outcome].`
+      action: reviseExisting ? 'reviseExistingBullet' : 'addNewBullet',
+      suggestionType: reviseExisting ? 'revise existing bullet' : 'add new bullet',
+      guidance: reviseExisting
+        ? `Revise the identified bullet in ${section} to include "${item.term}" with supporting context.`
+        : `Add a new bullet under the most relevant role or project in ${section}.`,
+      originalText: location.targetElement ?? null,
+      suggestedText,
+      inputsNeeded: ['How the requirement was used', 'Task or scope', 'Measurable result'],
+      bulletPrompt: suggestedText
     };
   }
   if (item.status === 'partial') {
+    const originalText = item.evidence || location.targetElement || null;
+    const suggestedText = originalText
+      ? originalText.replace(new RegExp(item.matchedAlias || item.term, 'i'), item.term)
+      : `[Action verb] used ${item.term} to [task], resulting in [measurable outcome].`;
     return {
       action: 'clarifyWording',
+      suggestionType: 'revise existing text',
       guidance: `Replace the related wording with the exact JD term "${item.term}" in ${section}.`,
-      bulletPrompt: `Rewrite with "${item.term}": ${item.evidence || '[existing resume bullet]'}`
+      originalText,
+      suggestedText,
+      inputsNeeded: ['Confirm the JD term accurately describes the existing evidence'],
+      bulletPrompt: suggestedText
     };
   }
   if (item.evidenceSection === 'summary' || item.evidenceSection === 'skills') {
+    const suggestedText = `[Action verb] used ${item.term} to [task], improving [measurable result].`;
     return {
       action: 'substantiate',
+      suggestionType: 'add evidence bullet',
       guidance: `Add "${item.term}" to an experience or project bullet, not only ${item.evidenceSection}.`,
-      bulletPrompt: `[Action verb] used ${item.term} to [task], improving [result].`
+      originalText: item.evidence || null,
+      suggestedText,
+      inputsNeeded: ['Relevant role or project', 'How it was used', 'Measurable result'],
+      bulletPrompt: suggestedText
     };
   }
   return {

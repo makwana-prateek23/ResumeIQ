@@ -223,6 +223,17 @@ export function extractRequirements(jobDescription) {
   else if (/\b(?:master'?s?|m\.?s\.?|mba)\b/i.test(jobDescription)) addExplicit("master's degree", ['masters degree', 'master degree', 'ms', 'mba'], 'education', /\b(?:master'?s?|m\.?s\.?|mba)\b/i);
   else if (/\b(?:bachelor'?s?|b\.?s\.?|b\.?a\.?)\b/i.test(jobDescription)) addExplicit("bachelor's degree", ['bachelors degree', 'bachelor degree', 'bs', 'ba'], 'education', /\b(?:bachelor'?s?|b\.?s\.?|b\.?a\.?)\b/i);
 
+  // Work-authorization language is eligibility logic, not an ordinary keyword
+  // list. Keep only the normalized alternatives above so a single "US Citizen
+  // or Green Card" requirement cannot create several contradictory missing hits.
+  const normalizedAuthorizationTerms = new Set([
+    'us citizen or green card', 'us citizen', 'green card',
+    'work authorization without sponsorship'
+  ]);
+  for (const [term, entry] of entries) {
+    if (entry.type === 'workAuthorization' && !normalizedAuthorizationTerms.has(term)) entries.delete(term);
+  }
+
   const documentCount = Math.max(segments.length, 1);
   const normalizedJobDescription = normalizeTerm(jobDescription);
   const weightedEntries = [...entries.values()].map((entry) => {
