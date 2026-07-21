@@ -14,7 +14,9 @@ const makeId = () => Date.now() + Math.random();
 const pageMarker = /^--?\s*\d+\s+of\s+\d+(?:\s*--)?$/i;
 
 function cleanImportedResume(data) {
-  if (!data?.imported) return data;
+  const legacyImported = (data?.experience || []).some((item) => (!item.role || /^role title$/i.test(item.role)) && (item.start || item.end || item.bullets?.some(Boolean)))
+    || (data?.education || []).some((item) => [item.degree, item.school, item.year].some((value) => pageMarker.test(String(value || '').trim())));
+  if (!data?.imported && !legacyImported) return data;
   const cleanedExperience = [];
   let current = null;
   for (const item of data.experience || []) {
@@ -41,12 +43,20 @@ function cleanImportedResume(data) {
       else current.bullets.push(bullet);
     }
   }
-  const cleanedEducation = (data.education || []).filter((item) => {
+  const cleanedEducation = [];
+  for (const item of data.education || []) {
     const values = [item.degree, item.school, item.year].map((value) => String(value || '').trim());
-    if (values.some((value) => pageMarker.test(value))) return false;
-    return values.some((value) => value && !/^(degree|institution|school|year|b\.s\. design|state university)$/i.test(value));
-  });
-  return { ...data, experience: cleanedExperience, education: cleanedEducation };
+    if (values.some((value) => pageMarker.test(value))) continue;
+    const [degree, school, year] = values;
+    const genericDegree = !degree || /^(degree|b\.s\. design)$/i.test(degree);
+    const genericSchool = !school || /^(institution|school|state university)$/i.test(school);
+    if (genericDegree && genericSchool) {
+      if (year && !/^year$/i.test(year) && cleanedEducation.length) cleanedEducation.at(-1).year = year;
+      continue;
+    }
+    cleanedEducation.push({ ...item, degree: genericDegree ? '' : degree, school: genericSchool ? '' : school, year: /^year$/i.test(year) ? '' : year });
+  }
+  return { ...data, imported: true, experience: cleanedExperience, education: cleanedEducation };
 }
 
 function hydrateResume(data) {
