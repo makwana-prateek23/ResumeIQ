@@ -187,6 +187,7 @@ function actionFor(item, location) {
 }
 
 export function buildTailoringPlan(analysis, resume) {
+  const seenActions = new Set();
   const keywordActions = analysis.requirements
     .map((item) => {
       const location = locateGap(item, resume);
@@ -205,6 +206,12 @@ export function buildTailoringPlan(analysis, resume) {
     })
     .filter((item) => item.action !== 'keepEvidence' || item.priority === 'required')
     .sort((a, b) => b.importance - a.importance)
+    .filter((item) => {
+      const key = item.term.toLowerCase().replace(/^(?:deep|focus(?:ed)?(?: on)?|some)\s+/, '').trim();
+      if (seenActions.has(key)) return false;
+      seenActions.add(key);
+      return true;
+    })
     .slice(0, 15);
 
   const sectionActions = [];

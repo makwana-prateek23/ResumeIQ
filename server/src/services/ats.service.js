@@ -23,6 +23,10 @@ function clamp(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+function uniqueTerms(items) {
+  return [...new Set(items.map((item) => item.term))];
+}
+
 function requiredExperience(text) {
   const numberWords = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
   const matches = [...text.matchAll(/\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(?:\s*[-–]\s*\d{1,2}|\+)?\s*(?:years?|yrs?)\b/gi)];
@@ -178,9 +182,9 @@ export function analyzeMatch(resume, jobDescription) {
     matched,
     partiallyMatched,
     missing,
-    matchedSkills: matched.filter((item) => SKILL_TYPES.has(item.type)).map((item) => item.term),
-    missingSkills: missing.filter((item) => SKILL_TYPES.has(item.type)).map((item) => item.term),
-    missingKeywords: missing.map((item) => item.term),
+    matchedSkills: uniqueTerms(matched.filter((item) => SKILL_TYPES.has(item.type))),
+    missingSkills: uniqueTerms(missing.filter((item) => SKILL_TYPES.has(item.type))),
+    missingKeywords: uniqueTerms(missing),
     possibleTechnicalKeywords: extractedRequirements
       .filter((item) => item.type === 'keyword')
       .slice(0, 12)

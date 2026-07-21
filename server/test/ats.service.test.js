@@ -206,6 +206,34 @@ test('rejects sentence fragments and normalizes platform and healthcare JD conce
   assert.equal(result.matchedSkills.some((term) => /engineer/i.test(term)), false);
 });
 
+test('deduplicates titles and scoped experience without using total career years', () => {
+  const result = analyzeMatch(parseResume(`
+    Jordan Candidate
+    Summary
+    Software engineer with 8 years of experience.
+    Skills
+    SQL, Large Language Models, AWS
+    Experience
+    Senior Engineer | Example | Jan 2018 - Present
+    - Coached junior engineers and reviewed pull requests.
+    - Built SQL data pipelines and reliable AWS services.
+  `), `
+    Senior Software Engineer II
+    6+ years experience as an engineer building full-stack web applications.
+    3+ years of experience working with SQL on large multi-table data sets.
+    3+ years of experience coaching other engineers.
+    This role will focus on large language models and platform reliability.
+  `);
+  const terms = result.requirements.map((item) => item.term);
+  const coaching = result.requirements.find((item) => item.term === '3+ years coaching engineers');
+  assert.equal(terms.some((term) => /software engineer ii|senior software engineer|^engineering$/i.test(term)), false);
+  assert.equal(terms.filter((term) => term === 'large language models').length, 1);
+  assert.equal(coaching.status, 'partial');
+  assert.equal(coaching.matchType, 'scopeWithoutDuration');
+  assert.equal(result.matched.some((item) => item.term === '3+ years coaching engineers'), false);
+  assert.equal(new Set(result.tailoringPlan.keywordActions.map((item) => item.term)).size, result.tailoringPlan.keywordActions.length);
+});
+
 test('uses TF-IDF weights to rank technical JD phrases deterministically', () => {
   const result = analyzeMatch(parseResume(resumeText), `
     Cloud Engineer

@@ -25,6 +25,7 @@ const SYNONYMS = new Map([
   ['project mgmt', 'project management'], ['quality assurance', 'qa'],
   ['development apis', 'api development'], ['development of apis', 'api development'],
   ['continuous integration', 'ci'], ['continuous deployment', 'cd'],
+  ['llm', 'large language models'], ['llms', 'large language models'], ['otel', 'opentelemetry'],
   ['usc', 'us citizen'], ['u.s. citizen', 'us citizen'], ['united states citizen', 'us citizen'],
   ['gc', 'green card'], ['permanent resident', 'green card']
 ]);
@@ -138,7 +139,7 @@ function cleanChunk(chunk) {
     .split(' ')
     .filter((word) => word && !STOP_WORDS.has(word))
     .join(' ')
-    .replace(/^(skills?|proficiency|familiarity|understanding|expertise|deep|some)\s+(in|of|with)?\s*/i, '')
+    .replace(/^(skills?|proficiency|familiarity|understanding|expertise|deep|some|focus(?:ed)?)\s+(in|of|with|on)?\s*/i, '')
     .replace(/\betc\b/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -186,11 +187,39 @@ function addResponsibilities(entries, segments) {
   }
 }
 
+function addExperienceRequirements(entries, segments) {
+  const numberWords = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+  for (const segment of segments) {
+    const match = segment.match(/\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\+?\s*(?:years?|yrs?)\b/i);
+    if (!match) continue;
+    const years = Number(match[1]) || numberWords[match[1].toLowerCase()];
+    const normalized = normalizeTerm(segment);
+    let scope = 'total engineering experience';
+    if (/\bcoach|mentor/i.test(segment)) scope = 'coaching engineers';
+    else if (/technical decision|decision-maker|decision maker/i.test(segment)) scope = 'technical decision making';
+    else if (/\bsql\b|database querying/i.test(segment)) scope = 'sql and database querying';
+    else if (/full[- ]stack|web applications?/i.test(segment)) scope = 'full-stack web applications';
+    else if (/\b(?:aws|cloud infrastructure)\b/i.test(segment)) scope = 'aws and cloud infrastructure';
+    const term = `${years}+ years ${scope}`;
+    entries.set(term, {
+      term,
+      aliases: [],
+      type: 'experience',
+      priority: 'required',
+      requestedYears: years,
+      experienceScope: scope,
+      jobDescriptionCount: 1,
+      source: segment.slice(0, 240),
+      normalizedSource: normalized
+    });
+  }
+}
+
 function validCandidate(term, type) {
   const words = term.split(' ');
   if (!term || words.length > 4 || words.some((word) => GENERIC.has(word))) return false;
   if (/\betc\b|\+|https?|www\.|\.com\b/i.test(term)) return false;
-  if (/\b(?:software|platform|data|machine learning|ai ml)?\s*engineer(?:ing)?\s+(?:i|ii|iii|iv|senior|lead)\b/i.test(term)) return false;
+  if (/^(?:senior|lead|staff|principal)?\s*(?:software|platform|data|machine learning|ai ml)?\s*engineer(?:ing)?(?:\s+(?:i|ii|iii|iv))?$/i.test(term)) return false;
   if (/^(?:improve|maintain|contribute|partner|work|analyze|architect)\b/i.test(term) && type !== 'responsibility') return false;
   return true;
 }
@@ -229,6 +258,7 @@ export function extractRequirements(jobDescription) {
 
   addKnownTerms(entries, segments);
   addResponsibilities(entries, segments);
+  addExperienceRequirements(entries, segments);
 
   for (const segment of segments) {
     for (const pair of acronymPairs(segment)) {
@@ -247,6 +277,7 @@ export function extractRequirements(jobDescription) {
       const term = normalizeTerm(rawTerm);
       const words = term.split(' ');
       const type = typeFor(term, technicalSegments.has(segment) ? `technical skills ${segment}` : segment);
+      if (type === 'experience') continue;
       if (!validCandidate(term, type) || /^[\d.,$£€]+$/.test(term) || (words.length === 1 && term.length < 3)) continue;
       const existing = entries.get(term);
       const priority = priorityFor(segment);
@@ -346,17 +377,45 @@ export function matchRequirements(requirements, resume) {
     let matchType = resumeCount > 0 ? 'exactOrEquivalent' : 'none';
     let evidence = '';
     let evidenceSection = '';
+    const scopedExperience = requirement.type === 'experience'
+      && requirement.experienceScope
+      && requirement.experienceScope !== 'total engineering experience';
 
     if (requirement.type === 'experience') {
       const numberWords = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
       const value = requirement.term.match(/\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve/i)?.[0];
       const requested = value ? (Number(value) || numberWords[value.toLowerCase()]) : 0;
-      if (requested > 0 && resume.experienceYears >= requested) {
+      const isTotalExperience = !requirement.experienceScope || requirement.experienceScope === 'total engineering experience';
+      if (isTotalExperience && requested > 0 && resume.experienceYears >= requested) {
         resumeCount = 1;
         status = 'matched';
         matchType = 'calculatedExperience';
         evidence = `${resume.experienceYears} years explicitly detected in the resume`;
         evidenceSection = 'experience';
+      } else if (!isTotalExperience) {
+        const scopeTokens = termTokens(requirement.experienceScope);
+        let bestScopeEvidence = { overlap: 0, line: '' };
+        for (const line of (resume.sections.experience || resume.text).split(/\r?\n/)) {
+          const lineTokens = termTokens(line);
+          const overlap = [...scopeTokens].filter((token) => lineTokens.has(token)).length / Math.max(scopeTokens.size, 1);
+          if (overlap > bestScopeEvidence.overlap) bestScopeEvidence = { overlap, line };
+        }
+        const statedYears = bestScopeEvidence.line.match(/\b(\d{1,2})\+?\s*(?:years?|yrs?)\b/i)?.[1];
+        if (bestScopeEvidence.overlap >= 0.5 && Number(statedYears) >= requested) {
+          resumeCount = 1;
+          status = 'matched';
+          matchType = 'scopedExperienceDuration';
+        } else if (bestScopeEvidence.overlap >= 0.5) {
+          resumeCount = 0;
+          status = 'partial';
+          matchType = 'scopeWithoutDuration';
+        } else {
+          resumeCount = 0;
+          status = 'missing';
+          matchType = 'missingScopedExperience';
+        }
+        evidence = bestScopeEvidence.line.trim().slice(0, 240);
+        evidenceSection = evidence ? 'experience' : '';
       }
     }
 
@@ -378,7 +437,7 @@ export function matchRequirements(requirements, resume) {
       const line = searchableText.split(/\r?\n/).find((value) => occurrenceCount(value, requirement.term, requirement.aliases) > 0);
       evidence = line?.trim().slice(0, 240) ?? requirement.term;
       evidenceSection = strongestSection ?? sectionEntries.find(([, text]) => occurrenceCount(text, requirement.term, requirement.aliases) > 0)?.[0] ?? 'resume';
-    } else {
+    } else if (!scopedExperience) {
       const requiredTokens = termTokens(requirement.term);
       let best = { overlap: 0, line: '' };
       for (const line of resume.text.split(/\r?\n/)) {
