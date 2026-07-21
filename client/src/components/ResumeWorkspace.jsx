@@ -106,6 +106,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
   });
   const [saved, setSaved] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadingWord, setDownloadingWord] = useState(false);
   const [draggedSection, setDraggedSection] = useState(null);
 
   const completion = useMemo(() => {
@@ -179,6 +180,61 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
     } finally { setDownloading(false); }
   }
 
+  async function downloadWord() {
+    setDownloadingWord(true);
+    try {
+      const { AlignmentType, BorderStyle, Document, Packer, Paragraph, TabStopPosition, TabStopType, TextRun } = await import('docx');
+      const bodySize = Math.round(style.size * 2);
+      const children = [];
+      const paragraph = (value, options = {}) => new Paragraph({
+        alignment: options.center ? AlignmentType.CENTER : AlignmentType.LEFT,
+        spacing: { after: options.after ?? 80, line: Math.round(style.spacing * 240) },
+        tabStops: options.tabs ? [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }] : undefined,
+        bullet: options.bullet ? { level: 0 } : undefined,
+        border: options.heading ? { bottom: { color: '000000', style: BorderStyle.SINGLE, size: 4, space: 2 } } : undefined,
+        children: [new TextRun({ text: value, bold: options.bold, size: options.size ?? bodySize, color: '000000', font: style.font })]
+      });
+      children.push(paragraph(resume.name, { center: true, bold: true, size: 32, after: 30 }));
+      if (resume.role) children.push(paragraph(resume.role, { center: true, bold: true, size: 22, after: 30 }));
+      const contactText = [resume.location, resume.phone, resume.email, resume.linkedin].filter(Boolean).join('  •  ');
+      if (contactText) children.push(paragraph(contactText, { center: true, size: 18, after: 160 }));
+      const sectionHeading = (title) => children.push(paragraph(title.toUpperCase(), { heading: true, bold: true, size: 20, after: 80 }));
+      const wordSections = {
+        summary: () => { if (!resume.summary) return; sectionHeading('Professional Summary'); children.push(paragraph(resume.summary)); },
+        experience: () => {
+          if (!resume.experience.length) return;
+          sectionHeading('Experience');
+          resume.experience.forEach((item) => {
+            const title = [item.role, item.company].filter(Boolean).join(' · ');
+            const dates = [item.start, item.end].filter(Boolean).join(' – ');
+            children.push(paragraph(`${title}${dates ? `\t${dates}` : ''}`, { bold: true, tabs: true, after: 30 }));
+            item.bullets.filter(Boolean).forEach((bullet) => children.push(paragraph(bullet, { bullet: true, after: 20 })));
+          });
+        },
+        skills: () => { if (!resume.skills) return; sectionHeading('Skills'); children.push(paragraph(resume.skills)); },
+        education: () => {
+          if (!resume.education.length) return;
+          sectionHeading('Education');
+          resume.education.forEach((item) => {
+            const study = [item.degree, item.school].filter(Boolean).join(' · ');
+            children.push(paragraph(`${study}${item.year ? `\t${item.year}` : ''}`, { bold: true, tabs: true, after: 30 }));
+          });
+        }
+      };
+      (resume.sectionOrder || initialResume.sectionOrder).forEach((section) => wordSections[section]?.());
+      const wordDocument = new Document({ sections: [{ properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } } }, children }] });
+      const blob = await Packer.toBlob(wordDocument);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${(resume.name || 'resume').trim().replace(/\s+/g, '-').toLowerCase()}.docx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } finally { setDownloadingWord(false); }
+  }
+
   const contact = [resume.location, resume.phone, resume.email, resume.linkedin].filter(Boolean).join(' · ');
   return <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-7">
     <header className="relative mb-6 overflow-hidden rounded-3xl bg-slate-950 p-6 text-white sm:p-8"><div className="absolute inset-y-0 right-0 hidden w-[38%] lg:block"><div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/30 to-transparent" /><img src={resumeBlocks} alt="Resume content blocks combining into a finished document" className="h-full w-full object-cover opacity-75" /></div><div className="relative max-w-3xl"><p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">{mode === 'format' ? 'Resume formatting studio' : 'Guided resume builder'}</p><h1 className="mt-2 text-3xl font-black tracking-tight">{mode === 'format' ? 'Make every page clean and consistent.' : 'Build your resume, one simple block at a time.'}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Fill in the blocks on the left. Your professional, ATS-friendly document updates instantly on the right.</p><div className="mt-5 max-w-xs"><div className="flex justify-between text-xs font-bold"><span>Resume complete</span><span>{completion}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-cyan-400 transition-all duration-500" style={{ width: `${completion}%` }} /></div></div></div></header>
@@ -193,7 +249,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       </div>
 
       <aside className="self-start">
-        <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="grid gap-3 sm:grid-cols-3"><label className="text-xs font-bold text-slate-600">Font<select value={style.font} onChange={(e) => setStyle({ ...style, font: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option>Arial</option><option>Calibri</option><option>Georgia</option><option>Times New Roman</option></select></label><label className="text-xs font-bold text-slate-600">Text size<select value={style.size} onChange={(e) => setStyle({ ...style, size: Number(e.target.value) })} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option value="10">10 pt</option><option value="10.5">10.5 pt</option><option value="11">11 pt</option><option value="12">12 pt</option></select></label><label className="text-xs font-bold text-slate-600">Spacing<select value={style.spacing} onChange={(e) => setStyle({ ...style, spacing: Number(e.target.value) })} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option value="1.3">Compact</option><option value="1.45">Normal</option><option value="1.65">Spacious</option></select></label></div><div className="mt-4 border-t border-slate-100 pt-3"><p className="text-xs font-bold text-slate-600">Drag to reorder entire sections</p><div className="mt-2 flex flex-wrap gap-2">{(resume.sectionOrder || initialResume.sectionOrder).map((section) => <button key={section} type="button" draggable onDragStart={() => setDraggedSection(section)} onDragOver={(event) => event.preventDefault()} onDrop={() => moveSection(section)} onDragEnd={() => setDraggedSection(null)} className={`cursor-grab rounded-lg border px-3 py-2 text-xs font-bold active:cursor-grabbing ${draggedSection === section ? 'border-indigo-400 bg-indigo-50 text-indigo-700 opacity-60' : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300'}`}><span className="mr-1 text-slate-400">⠿</span>{sectionLabels[section]}</button>)}</div></div><div className="mt-3 flex flex-wrap items-center gap-2"><label className="mr-auto flex items-center gap-2 text-xs font-bold text-slate-600">Heading color <input type="color" value={style.accent} onChange={(e) => setStyle({ ...style, accent: e.target.value })} className="h-8 w-10" /></label><button type="button" onClick={resetDraft} className="rounded-lg px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50">Start over</button><button type="button" onClick={saveDraft} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold hover:bg-slate-50">{saved ? 'Saved ✓' : 'Save draft'}</button><button type="button" onClick={downloadPdf} disabled={downloading} className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60">{downloading ? 'Creating…' : 'Download PDF'}</button></div></div>
+        <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="grid gap-3 sm:grid-cols-3"><label className="text-xs font-bold text-slate-600">Font<select value={style.font} onChange={(e) => setStyle({ ...style, font: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option>Arial</option><option>Calibri</option><option>Georgia</option><option>Times New Roman</option></select></label><label className="text-xs font-bold text-slate-600">Text size<select value={style.size} onChange={(e) => setStyle({ ...style, size: Number(e.target.value) })} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option value="10">10 pt</option><option value="10.5">10.5 pt</option><option value="11">11 pt</option><option value="12">12 pt</option></select></label><label className="text-xs font-bold text-slate-600">Spacing<select value={style.spacing} onChange={(e) => setStyle({ ...style, spacing: Number(e.target.value) })} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option value="1.3">Compact</option><option value="1.45">Normal</option><option value="1.65">Spacious</option></select></label></div><div className="mt-4 border-t border-slate-100 pt-3"><p className="text-xs font-bold text-slate-600">Drag to reorder entire sections</p><div className="mt-2 flex flex-wrap gap-2">{(resume.sectionOrder || initialResume.sectionOrder).map((section) => <button key={section} type="button" draggable onDragStart={() => setDraggedSection(section)} onDragOver={(event) => event.preventDefault()} onDrop={() => moveSection(section)} onDragEnd={() => setDraggedSection(null)} className={`cursor-grab rounded-lg border px-3 py-2 text-xs font-bold active:cursor-grabbing ${draggedSection === section ? 'border-indigo-400 bg-indigo-50 text-indigo-700 opacity-60' : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300'}`}><span className="mr-1 text-slate-400">⠿</span>{sectionLabels[section]}</button>)}</div></div><div className="mt-3 flex flex-wrap items-center gap-2"><label className="mr-auto flex items-center gap-2 text-xs font-bold text-slate-600">Heading color <input type="color" value={style.accent} onChange={(e) => setStyle({ ...style, accent: e.target.value })} className="h-8 w-10" /></label><button type="button" onClick={resetDraft} className="rounded-lg px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50">Start over</button><button type="button" onClick={saveDraft} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold hover:bg-slate-50">{saved ? 'Saved ✓' : 'Save draft'}</button><button type="button" onClick={downloadWord} disabled={downloadingWord} className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 disabled:opacity-60">{downloadingWord ? 'Creating…' : 'Download Word'}</button><button type="button" onClick={downloadPdf} disabled={downloading} className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60">{downloading ? 'Creating…' : 'Download PDF'}</button></div></div>
         <div className="overflow-x-auto overflow-y-visible rounded-2xl bg-slate-200 p-3 pb-8 sm:p-6 sm:pb-10"><article className="mx-auto min-h-[842px] min-w-[520px] max-w-[595px] bg-white shadow-2xl" style={{ padding: `${style.margin}px`, fontFamily: style.font, fontSize: `${style.size}px`, lineHeight: style.spacing }}><header className={style.template === 'modern' ? 'text-left' : 'text-center'}><h1 className="text-[2.25em] font-black tracking-tight text-slate-950">{resume.name || (resume.imported ? '' : 'YOUR NAME')}</h1><p className="mt-1 text-[1.2em] font-bold" style={{ color: style.accent }}>{resume.role || (resume.imported ? '' : 'TARGET ROLE')}</p><p className="mt-2 break-words text-[0.9em] text-slate-500">{contact || (resume.imported ? '' : 'City, State · phone · email · LinkedIn')}</p></header>{(resume.sectionOrder || initialResume.sectionOrder).map((section) => <PreviewSectionContent key={section} section={section} resume={resume} color={style.accent} />)}</article></div>
       </aside>
     </div>
