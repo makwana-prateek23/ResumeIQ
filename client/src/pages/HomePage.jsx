@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { analyzeResume, extractResume } from '../services/analysis.js';
 
-const scoreLabels = { requirements: 'Technical keywords', experience: 'Experience' };
+const scoreLabels = { requirements: 'Mandatory skills & keywords', experience: 'Experience', education: 'Education', workAuthorization: 'Work authorization' };
 
 function ScoreBar({ label, score }) {
   return <div><div className="mb-2 flex justify-between text-sm font-semibold text-slate-700"><span>{label}</span><span>{score}%</span></div><div className="h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-indigo-600 transition-all duration-700" style={{ width: `${score}%` }} /></div></div>;

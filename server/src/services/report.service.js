@@ -34,7 +34,8 @@ export function buildDetailedReport(analysis, resume) {
     experience: [],
     projects: [],
     education: [],
-    certifications: []
+    certifications: [],
+    workAuthorization: []
   };
 
   const missingSkills = analysis.missing.filter((item) => SKILL_TYPES.has(item.type));
@@ -44,6 +45,11 @@ export function buildDetailedReport(analysis, resume) {
   const weakEvidence = analysis.partiallyMatched.concat(analysis.matched.filter((item) => ['summary', 'skills'].includes(item.evidenceSection)));
   if (weakEvidence.length) sectionRecommendations.experience.push(`Strengthen evidence for: ${weakEvidence.slice(0, 6).map((item) => item.term).join(', ')}.`);
   if (!analysis.resumeQuality.checks.measurableResults) sectionRecommendations.experience.push('Add scope and outcomes to bullets using numbers and measurable results.');
+
+  const missingEducation = analysis.missing.filter((item) => item.type === 'education');
+  if (missingEducation.length) sectionRecommendations.education.push('Verify the requested degree against the Education section; never claim a degree that was not earned.');
+  const missingAuthorization = analysis.missing.filter((item) => item.type === 'workAuthorization');
+  if (missingAuthorization.length) sectionRecommendations.workAuthorization.push('Confirm your actual work authorization before adding USC, Green Card, sponsorship, or authorization wording.');
 
   if (!resume.sections.projects) sectionRecommendations.projects.push('Add a projects section only when projects provide relevant evidence not already clear from employment.');
   else if (!projectEvidence.length) sectionRecommendations.projects.push('Reorder or rewrite project bullets to show evidence for the job’s highest-priority requirements.');
@@ -62,7 +68,9 @@ export function buildDetailedReport(analysis, resume) {
   const checklist = [
     { item: 'Required technical keywords are addressed', passed: !analysis.missing.some((item) => item.priority === 'required') },
     { item: 'Important technical skills have experience or project evidence', passed: !analysis.matched.some((item) => ['summary', 'skills'].includes(item.evidenceSection)) },
-    { item: 'Required experience level is met', passed: analysis.breakdown.experience >= 100 }
+    { item: 'Required experience level is met', passed: analysis.breakdown.experience >= 100 },
+    { item: 'Required education is verified', passed: !analysis.missing.some((item) => item.type === 'education' && item.priority === 'required') },
+    { item: 'Work authorization requirement is verified', passed: !analysis.missing.some((item) => item.type === 'workAuthorization' && item.priority === 'required') }
   ];
 
   return {

@@ -3,12 +3,14 @@ const SECTION_BY_TYPE = {
   softSkill: 'experience achievement',
   certification: 'certifications',
   education: 'education',
+  workAuthorization: 'work authorization or additional information',
   experience: 'professional experience',
   keyword: 'most relevant experience bullet'
 };
 
 const TYPE_WEIGHT = {
   certification: 5,
+  workAuthorization: 5,
   hardSkill: 4,
   experience: 4,
   education: 3,
@@ -28,6 +30,7 @@ const GAP_LOCATION_BY_TYPE = {
   experience: { primarySection: 'Professional Summary', supportingSection: 'Experience', missingPart: 'required years or relevant responsibility evidence' },
   certification: { primarySection: 'Certifications', supportingSection: null, missingPart: 'certification name and issuer' },
   education: { primarySection: 'Education', supportingSection: null, missingPart: 'degree, field, or qualification' },
+  workAuthorization: { primarySection: 'Work Authorization', supportingSection: 'Header or Additional Information', missingPart: 'verified authorization status using truthful wording' },
   keyword: { primarySection: 'Experience', supportingSection: 'Projects', missingPart: 'JD terminology in an achievement bullet' }
 };
 
@@ -102,6 +105,22 @@ function priorityScore(item) {
 
 function actionFor(item, location) {
   const section = location.primarySection ?? SECTION_BY_TYPE[item.type] ?? 'most relevant resume section';
+  if (item.type === 'workAuthorization') {
+    return {
+      action: item.status === 'missing' ? 'verifyThenAdd' : 'keepEvidence',
+      guidance: item.status === 'missing'
+        ? `Verify your status first. Only if true, add the exact work-authorization status requested by the employer to ${section}.`
+        : `Keep the verified work-authorization evidence in ${section}.`,
+      bulletPrompt: null
+    };
+  }
+  if (item.type === 'education' && item.status === 'missing') {
+    return {
+      action: 'verifyEducation',
+      guidance: `The JD requests ${item.term}. Verify the Education section; do not add or upgrade a degree unless it was earned.`,
+      bulletPrompt: null
+    };
+  }
   if (item.status === 'missing') {
     return {
       action: 'addKeyword',

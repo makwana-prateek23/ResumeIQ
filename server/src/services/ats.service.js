@@ -3,8 +3,10 @@ import { buildTailoringPlan } from './tailoring.service.js';
 import { buildDetailedReport } from './report.service.js';
 
 const BASE_WEIGHTS = Object.freeze({
-  requirements: 70,
-  experience: 30
+  requirements: 50,
+  experience: 25,
+  education: 15,
+  workAuthorization: 10
 });
 
 const SKILL_TYPES = new Set([
@@ -12,7 +14,7 @@ const SKILL_TYPES = new Set([
   'database', 'devOpsTool', 'testingTool', 'methodology'
 ]);
 
-const SCORED_TYPES = new Set([...SKILL_TYPES, 'experience']);
+const SCORED_TYPES = new Set([...SKILL_TYPES, 'experience', 'education', 'certification', 'workAuthorization']);
 
 function clamp(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -57,6 +59,11 @@ function scoreEducation(requirementMatches, resume) {
   const requiredLevel = Math.max(...requirements.map((item) => level(`${item.term} ${item.source}`)));
   const resumeLevel = level(resume.sections.education);
   return requiredLevel === 0 ? 100 : clamp((resumeLevel / requiredLevel) * 100);
+}
+
+function scoreCategory(matches, type) {
+  const category = matches.filter((match) => match.type === type);
+  return category.length ? scoreRequirements(category) : null;
 }
 
 function searchabilityChecks(resume) {
@@ -113,8 +120,10 @@ export function analyzeMatch(resume, jobDescription) {
     : (resume.sections.experience ? 100 : 0);
 
   const breakdown = {
-    requirements: scoreRequirements(requirementMatches),
-    experience: experienceScore
+    requirements: scoreRequirements(requirementMatches.filter((item) => SKILL_TYPES.has(item.type) || item.type === 'certification')),
+    experience: experienceScore,
+    education: scoreEducation(requirementMatches, resume),
+    workAuthorization: scoreCategory(requirementMatches, 'workAuthorization')
   };
   const jobTitleScore = scoreTitle(jobTitle, resume);
 
@@ -146,8 +155,8 @@ export function analyzeMatch(resume, jobDescription) {
       targetRole: jobTitle || null,
       score: jobTitleScore === null
         ? weightedOverall(breakdown)
-        : clamp((jobTitleScore * 0.25) + (breakdown.requirements * 0.5) + (breakdown.experience * 0.25)),
-      label: 'Role suitability based on title, technical requirements, and experience'
+        : clamp((jobTitleScore * 0.2) + (weightedOverall(breakdown) * 0.8)),
+      label: 'Role suitability based on title, mandatory skills, experience, education, and work authorization'
     },
     requirements: requirementMatches,
     matched,
@@ -171,7 +180,7 @@ export function analyzeMatch(resume, jobDescription) {
       experienceCalculationMethod: resume.experienceCalculation.method,
       extractedRequirementCount: requirements.length,
       ignoredNonTechnicalRequirementCount: extractedRequirements.length - requirements.length,
-      scoringScope: 'technical keywords and experience only'
+      scoringScope: 'mandatory skills, experience, education, certifications, and work authorization'
     }
   };
 

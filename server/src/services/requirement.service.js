@@ -23,7 +23,9 @@ const SYNONYMS = new Map([
   ['postgres', 'postgresql'], ['amazon web services', 'aws'],
   ['google cloud platform', 'gcp'], ['microsoft azure', 'azure'],
   ['project mgmt', 'project management'], ['quality assurance', 'qa'],
-  ['continuous integration', 'ci'], ['continuous deployment', 'cd']
+  ['continuous integration', 'ci'], ['continuous deployment', 'cd'],
+  ['usc', 'us citizen'], ['u.s. citizen', 'us citizen'], ['united states citizen', 'us citizen'],
+  ['gc', 'green card'], ['permanent resident', 'green card']
 ]);
 
 const GENERIC = new Set([
@@ -79,6 +81,7 @@ function priorityFor(context) {
 }
 
 function typeFor(term, context) {
+  if (/\b(us citizen|usc|green card|permanent resident|work authori[sz]ation|authori[sz]ed to work|sponsorship)\b/i.test(`${term} ${context}`)) return 'workAuthorization';
   if ([...SOFT_SKILLS].some((skill) => term === skill || term.includes(skill))) return 'softSkill';
   if (/\b(bachelor|master|phd|degree|diploma|education)\b/i.test(term)) return 'education';
   if (/\b(certification|certified|certificate|license|licensed)\b/i.test(term)) return 'certification';
@@ -197,6 +200,28 @@ export function extractRequirements(jobDescription) {
       });
     }
   }
+
+  const addExplicit = (term, aliases, type, pattern) => {
+    const source = segments.find((segment) => pattern.test(segment));
+    if (!source) return;
+    entries.set(term, {
+      term,
+      aliases,
+      type,
+      priority: priorityFor(source) === 'preferred' ? 'preferred' : 'required',
+      jobDescriptionCount: 1,
+      source: source.slice(0, 240)
+    });
+  };
+  addExplicit('us citizen or green card', ['us citizen', 'usc', 'green card', 'gc', 'permanent resident'], 'workAuthorization', /\b(?:(?:u\.?s\.?|united states)\s+citizen(?:ship)?|usc)\b.*\b(?:or|and\/or)\b.*\b(?:green card|gc|permanent resident)\b/i);
+  if (!entries.has('us citizen or green card')) {
+    addExplicit('us citizen', ['usc', 'u.s. citizen', 'united states citizen'], 'workAuthorization', /\b(?:(?:u\.?s\.?|united states)\s+citizen(?:ship)?|usc)\b/i);
+    addExplicit('green card', ['gc', 'permanent resident'], 'workAuthorization', /\b(?:green card|permanent resident|gc holder)\b/i);
+  }
+  addExplicit('work authorization without sponsorship', ['authorized to work', 'work authorization', 'without sponsorship', 'no sponsorship', 'do not require sponsorship'], 'workAuthorization', /\b(?:authori[sz]ed to work|work authori[sz]ation|without sponsorship|no sponsorship|do not require sponsorship|unable to sponsor)\b/i);
+  if (/\b(?:ph\.?d|doctorate|doctoral degree)\b/i.test(jobDescription)) addExplicit('doctoral degree', ['phd', 'ph.d', 'doctorate'], 'education', /\b(?:ph\.?d|doctorate|doctoral degree)\b/i);
+  else if (/\b(?:master'?s?|m\.?s\.?|mba)\b/i.test(jobDescription)) addExplicit("master's degree", ['masters degree', 'master degree', 'ms', 'mba'], 'education', /\b(?:master'?s?|m\.?s\.?|mba)\b/i);
+  else if (/\b(?:bachelor'?s?|b\.?s\.?|b\.?a\.?)\b/i.test(jobDescription)) addExplicit("bachelor's degree", ['bachelors degree', 'bachelor degree', 'bs', 'ba'], 'education', /\b(?:bachelor'?s?|b\.?s\.?|b\.?a\.?)\b/i);
 
   const documentCount = Math.max(segments.length, 1);
   const normalizedJobDescription = normalizeTerm(jobDescription);
