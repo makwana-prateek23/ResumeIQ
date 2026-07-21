@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { analyzeResume } from '../services/analysis.js';
 
 const scoreLabels = { requirements: 'Technical keywords', experience: 'Experience' };
@@ -22,70 +23,6 @@ function Panel({ title, children, className = '' }) {
   return <section className={`rounded-3xl border border-slate-200/80 bg-white p-6 shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)] sm:p-8 ${className}`}><h2 className="mb-5 text-lg font-bold tracking-tight text-slate-900">{title}</h2>{children}</section>;
 }
 
-const formatChecks = [
-  ['One-column structure', 'Keeps the reading order predictable for ATS parsers.'],
-  ['Standard section names', 'Use Experience, Education, Skills, and Projects.'],
-  ['No tables or text boxes', 'Important text can be skipped when it sits inside complex layouts.'],
-  ['Consistent date style', 'Use one format such as Jan 2024 – Present throughout.'],
-  ['Readable body type', 'Keep body text between 10 and 12 pt with comfortable spacing.'],
-];
-
-function FormattingStudio({ result }) {
-  const [template, setTemplate] = useState('classic');
-  const [font, setFont] = useState('Arial');
-  const [fontSize, setFontSize] = useState(11);
-  const [spacing, setSpacing] = useState('comfortable');
-  const [accent, setAccent] = useState('#3730a3');
-  const [checked, setChecked] = useState(() => formatChecks.map(() => false));
-  const targetRole = result.roleSuitability?.targetRole || 'Target position';
-  const missingTerms = result.missingSkills?.slice(0, 4) ?? [];
-  const completed = checked.filter(Boolean).length;
-  const lineHeight = spacing === 'compact' ? 1.35 : spacing === 'spacious' ? 1.75 : 1.55;
-
-  function toggleCheck(index) {
-    setChecked((current) => current.map((value, itemIndex) => itemIndex === index ? !value : value));
-  }
-
-  return <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-    <Panel title="Formatting studio" className="overflow-hidden">
-      <p className="-mt-3 mb-6 text-sm leading-6 text-slate-500">Preview ATS-safe visual choices. These controls do not modify your original file.</p>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <label className="text-sm font-bold text-slate-700">Layout
-          <select value={template} onChange={(event) => setTemplate(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100">
-            <option value="classic">Classic ATS</option><option value="modern">Modern clean</option><option value="compact">Compact professional</option>
-          </select>
-        </label>
-        <label className="text-sm font-bold text-slate-700">Typeface
-          <select value={font} onChange={(event) => setFont(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100">
-            <option>Arial</option><option>Calibri</option><option>Georgia</option><option>Times New Roman</option>
-          </select>
-        </label>
-        <label className="text-sm font-bold text-slate-700">Body size <span className="float-right text-indigo-600">{fontSize} pt</span>
-          <input type="range" min="10" max="12" step="0.5" value={fontSize} onChange={(event) => setFontSize(Number(event.target.value))} className="mt-4 w-full accent-indigo-600" />
-        </label>
-        <label className="text-sm font-bold text-slate-700">Line spacing
-          <div className="mt-2 flex rounded-xl bg-slate-100 p-1">{['compact', 'comfortable', 'spacious'].map((option) => <button type="button" key={option} onClick={() => setSpacing(option)} className={`flex-1 rounded-lg px-2 py-2 text-xs capitalize transition ${spacing === option ? 'bg-white font-bold text-indigo-700 shadow-sm' : 'text-slate-500'}`}>{option}</button>)}</div>
-        </label>
-      </div>
-      <div className="mt-5 flex items-center justify-between rounded-xl border border-slate-200 p-3"><div><p className="text-sm font-bold">Section accent</p><p className="text-xs text-slate-500">Use color sparingly for headings only.</p></div><input aria-label="Section accent color" type="color" value={accent} onChange={(event) => setAccent(event.target.value)} className="h-10 w-12 cursor-pointer rounded border-0 bg-transparent" /></div>
-      <div className="mt-6 rounded-2xl bg-slate-100 p-3 sm:p-6">
-        <article className={`mx-auto min-h-[520px] max-w-lg bg-white p-7 shadow-xl ${template === 'modern' ? 'border-t-8' : template === 'compact' ? 'p-5' : ''}`} style={{ fontFamily: font, fontSize: `${fontSize}px`, lineHeight, borderColor: accent }}>
-          <header className={template === 'modern' ? 'text-left' : 'text-center'}><h3 className="text-2xl font-bold tracking-tight">YOUR NAME</h3><p className="mt-1 text-[0.9em] text-slate-500">City, State · email@example.com · (555) 000-0000</p></header>
-          <div className="mt-6"><h4 className="border-b pb-1 font-bold uppercase tracking-widest" style={{ color: accent, borderColor: `${accent}44` }}>Professional summary</h4><p className="mt-2 text-slate-600">Results-focused professional targeting <strong>{targetRole}</strong>, with experience delivering measurable outcomes across collaborative projects.</p></div>
-          <div className="mt-5"><h4 className="border-b pb-1 font-bold uppercase tracking-widest" style={{ color: accent, borderColor: `${accent}44` }}>Experience</h4><div className="mt-2 flex justify-between font-bold"><span>Role title · Company</span><span>2023 – Present</span></div><ul className="mt-1 list-disc pl-5 text-slate-600"><li>Delivered a measurable result by applying a relevant skill to a business challenge.</li><li>Improved a key process by 20% while partnering with a cross-functional team.</li></ul></div>
-          <div className="mt-5"><h4 className="border-b pb-1 font-bold uppercase tracking-widest" style={{ color: accent, borderColor: `${accent}44` }}>Skills</h4><p className="mt-2 text-slate-600">Add only skills you can support with evidence{missingTerms.length ? `; verify: ${missingTerms.join(', ')}` : '.'}</p></div>
-          <div className="mt-5"><h4 className="border-b pb-1 font-bold uppercase tracking-widest" style={{ color: accent, borderColor: `${accent}44` }}>Education</h4><p className="mt-2 font-bold">Degree · Institution</p></div>
-        </article>
-      </div>
-    </Panel>
-    <Panel title="ATS formatting checklist" className="xl:sticky xl:top-6 xl:self-start">
-      <div className="mb-5 flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-full bg-indigo-50 text-sm font-black text-indigo-700">{completed}/5</div><div><p className="text-sm font-bold">Manual review</p><p className="text-xs text-slate-500">Check against your source file</p></div></div>
-      <div className="grid gap-2">{formatChecks.map(([title, detail], index) => <button type="button" key={title} onClick={() => toggleCheck(index)} className={`rounded-xl border p-3 text-left transition ${checked[index] ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 hover:border-indigo-300'}`}><span className="flex items-start gap-3"><span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border text-[10px] font-black ${checked[index] ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300'}`}>{checked[index] ? '✓' : ''}</span><span><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{detail}</span></span></span></button>)}</div>
-      <div className="mt-5 rounded-xl bg-amber-50 p-4 text-xs leading-5 text-amber-900"><strong>Accuracy note:</strong> Never add a keyword, credential, or result unless it is true and you can explain it in an interview.</div>
-    </Panel>
-  </div>;
-}
-
 function HomePage() {
   const [resume, setResume] = useState(null);
   const [jobDescription, setJobDescription] = useState('');
@@ -93,7 +30,6 @@ function HomePage() {
   const [error, setError] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-  const [activeTab, setActiveTab] = useState('review');
 
   const jdReadiness = useMemo(() => Math.min(100, Math.round((jobDescription.trim().length / 100) * 100)), [jobDescription]);
 
@@ -112,7 +48,7 @@ function HomePage() {
     if (!resume) return setError('Choose a PDF or Word (.docx) resume.');
     if (jobDescription.trim().length < 100) return setError('Enter at least 100 characters from the job description.');
     setIsAnalyzing(true);
-    try { const { data } = await analyzeResume(resume, jobDescription.trim()); setResult(data); setActiveTab('review'); }
+    try { const { data } = await analyzeResume(resume, jobDescription.trim()); setResult(data); }
     catch (requestError) { setError(requestError.response?.data?.error ?? 'Analysis failed. Please try again.'); }
     finally { setIsAnalyzing(false); }
   }
@@ -183,14 +119,18 @@ function HomePage() {
 
   return <main className="relative min-h-screen overflow-hidden bg-[#f5f7fb] text-slate-900">
     <div className="pointer-events-none absolute -left-40 -top-40 h-96 w-96 rounded-full bg-cyan-200/40 blur-3xl" /><div className="pointer-events-none absolute right-0 top-64 h-96 w-96 rounded-full bg-indigo-200/40 blur-3xl" />
-    <nav className="relative z-10 border-b border-white/70 bg-white/70 backdrop-blur-xl"><div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8"><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-cyan-500 to-indigo-600 font-black text-white shadow-lg shadow-indigo-200">R</span><div><p className="font-extrabold tracking-tight">ResumeIQ</p><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">ATS Analyzer</p></div></div><span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">Secure PDF & Word analysis</span></div></nav>
-
     <div className="relative z-10 mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
       <header className="relative overflow-hidden rounded-[2rem] bg-slate-950 px-7 py-10 text-white shadow-2xl shadow-slate-300 sm:px-12 sm:py-14"><div className="absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.22),transparent_65%)]" /><div className="relative max-w-3xl"><span className="inline-flex rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-cyan-300">Technical match intelligence</span><h1 className="mt-5 text-4xl font-black leading-tight tracking-tight sm:text-6xl">Turn every job description into a clearer resume strategy.</h1><p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">Find the technical keywords you match, the ones you miss, and the experience evidence that will strengthen your application.</p><div className="mt-7 flex flex-wrap gap-5 text-xs font-semibold text-slate-300"><span>70% technical keywords</span><span>30% experience</span><span>Explainable TF-IDF scoring</span></div></div></header>
 
+      <section className="relative z-20 -mt-5 grid gap-4 px-3 md:grid-cols-3 sm:px-7" aria-label="Choose a resume tool">
+        <a href="#resume-review" className="group rounded-2xl border border-indigo-200 bg-white p-5 shadow-xl shadow-slate-200/60 transition hover:-translate-y-1 hover:border-indigo-400"><div className="flex items-start justify-between"><span className="grid h-11 w-11 place-items-center rounded-xl bg-indigo-100 text-lg font-black text-indigo-700">01</span><span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-indigo-600">→</span></div><h2 className="mt-4 text-lg font-black">Review my resume</h2><p className="mt-2 text-sm leading-6 text-slate-500">Upload your resume and compare it with a job description.</p></a>
+        <Link to="/format" className="group rounded-2xl border border-cyan-200 bg-white p-5 shadow-xl shadow-slate-200/60 transition hover:-translate-y-1 hover:border-cyan-400"><div className="flex items-start justify-between"><span className="grid h-11 w-11 place-items-center rounded-xl bg-cyan-100 text-lg font-black text-cyan-700">02</span><span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-cyan-600">→</span></div><h2 className="mt-4 text-lg font-black">Edit & format</h2><p className="mt-2 text-sm leading-6 text-slate-500">Improve content and style it with simple Word-like controls.</p></Link>
+        <Link to="/create" className="group rounded-2xl border border-emerald-200 bg-white p-5 shadow-xl shadow-slate-200/60 transition hover:-translate-y-1 hover:border-emerald-400"><div className="flex items-start justify-between"><span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-100 text-lg font-black text-emerald-700">03</span><span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-emerald-600">→</span></div><h2 className="mt-4 text-lg font-black">Create new resume</h2><p className="mt-2 text-sm leading-6 text-slate-500">Build a professional resume from guided content blocks.</p></Link>
+      </section>
+
       <section className="mt-8 rounded-3xl border border-indigo-200 bg-gradient-to-r from-indigo-950 to-slate-950 p-6 text-white shadow-xl sm:p-8"><div className="grid items-center gap-7 lg:grid-cols-[1fr_auto]"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-300">Chrome extension</p><h2 className="mt-2 text-2xl font-black">Analyze job postings without leaving the page</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Download the ResumeIQ extension, extract the current job description, upload a PDF or DOCX resume, and view the role match directly in the popup.</p></div><a href="/downloads/resumeiq-extension.zip" download className="rounded-xl bg-white px-5 py-3 text-center text-sm font-black text-indigo-700 shadow-lg transition hover:-translate-y-0.5">Download extension</a></div><details className="mt-6 rounded-2xl border border-white/15 bg-white/5 p-4"><summary className="cursor-pointer font-bold">How to install in Chrome</summary><ol className="mt-4 grid gap-2 pl-5 text-sm leading-6 text-slate-300"><li>Download and extract the ZIP file.</li><li>Open <code className="rounded bg-black/30 px-1.5 py-0.5">chrome://extensions</code>.</li><li>Enable <strong>Developer mode</strong>.</li><li>Click <strong>Load unpacked</strong> and select the extracted extension folder.</li><li>Pin ResumeIQ, open a job posting, and click the extension icon.</li><li>Select the JD text or use “Get job description from page,” then upload your resume and analyze.</li></ol></details></section>
 
-      <div className="mt-8 grid items-start gap-8 lg:grid-cols-[420px_minmax(0,1fr)]">
+      <div id="resume-review" className="mt-8 scroll-mt-28 grid items-start gap-8 lg:grid-cols-[420px_minmax(0,1fr)]">
         <form onSubmit={submitAnalysis} className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-[0_24px_70px_-35px_rgba(15,23,42,0.4)] lg:sticky lg:top-6 sm:p-7">
           <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Step 1</p><h2 className="mt-1 text-xl font-extrabold">Add your resume</h2></div>
           <label htmlFor="resume" className={`mt-5 flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed p-6 text-center transition ${resume ? 'border-emerald-300 bg-emerald-50' : 'border-slate-300 bg-slate-50 hover:border-indigo-400 hover:bg-indigo-50/50'}`}><span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-sm font-black shadow-sm">PDF/DOCX</span><span className="mt-3 text-sm font-bold">{resume ? resume.name : 'Choose your PDF or Word resume'}</span><span className="mt-1 text-xs text-slate-500">PDF or DOCX, maximum 5 MB, processed in memory</span></label><input id="resume" name="resume" type="file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx" onChange={selectResume} className="sr-only" />
@@ -203,14 +143,12 @@ function HomePage() {
 
         {!result ? <section className="grid min-h-[520px] place-items-center rounded-3xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-[0_24px_70px_-40px_rgba(15,23,42,0.35)] backdrop-blur"><div className="max-w-md"><div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-br from-indigo-100 to-cyan-100 text-3xl font-black text-indigo-600">%</div><h2 className="mt-6 text-2xl font-extrabold">Your match report starts here</h2><p className="mt-3 leading-7 text-slate-500">Upload a resume and job description to see technical keyword coverage, experience alignment, missing terms, and prioritized resume updates.</p><div className="mt-7 grid grid-cols-3 gap-3 text-xs font-semibold text-slate-500"><span className="rounded-xl bg-slate-50 p-3">Keyword match</span><span className="rounded-xl bg-slate-50 p-3">Experience</span><span className="rounded-xl bg-slate-50 p-3">Action plan</span></div></div></section> :
         <div aria-live="polite" className="print-report grid gap-6">
-          <div className="no-print flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:flex-row sm:items-center sm:justify-between"><div className="flex" role="tablist" aria-label="Resume tools"><button role="tab" aria-selected={activeTab === 'review'} type="button" onClick={() => setActiveTab('review')} className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-bold transition sm:flex-none ${activeTab === 'review' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>Resume review</button><button role="tab" aria-selected={activeTab === 'format'} type="button" onClick={() => setActiveTab('format')} className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-bold transition sm:flex-none ${activeTab === 'format' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>Formatting tools</button></div><button type="button" onClick={downloadPdfReport} disabled={isDownloadingPdf} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60">{isDownloadingPdf ? 'Creating PDF...' : 'Download review PDF'}</button></div>
-          {activeTab === 'review' ? <>
+          <div className="no-print flex justify-end"><button type="button" onClick={downloadPdfReport} disabled={isDownloadingPdf} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60">{isDownloadingPdf ? 'Creating PDF...' : 'Download review PDF'}</button></div>
           <Panel title="Role suitability"><div className="grid items-center gap-7 sm:grid-cols-[170px_1fr]"><div className="mx-auto grid h-40 w-40 place-items-center rounded-full p-3" style={{ background: `conic-gradient(#4f46e5 ${result.roleSuitability?.score ?? result.overallScore}%, #e2e8f0 0)` }}><div className="grid h-full w-full place-items-center rounded-full bg-white text-center"><div><p className="text-4xl font-black tracking-tight">{result.roleSuitability?.score ?? result.overallScore}%</p><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Role match</p></div></div></div><div>{result.roleSuitability?.targetRole && <p className="mb-5 rounded-xl bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-800">Target role: {result.roleSuitability.targetRole}</p>}<div className="grid gap-5">{Object.entries(result.breakdown).map(([key, score]) => <ScoreBar key={key} label={scoreLabels[key] ?? key} score={score} />)}</div><p className="mt-5 text-xs font-semibold text-slate-400">Parsing confidence: {result.confidence}%</p></div></div></Panel>
           <Panel title="Technical keyword coverage"><div className="grid gap-7 sm:grid-cols-2"><div><h3 className="mb-3 text-sm font-bold text-emerald-700">Matched keywords</h3><TagList items={result.matchedSkills} emptyText="No technical matches found." /></div><div><h3 className="mb-3 text-sm font-bold text-rose-700">Missing keywords</h3><TagList items={result.missingSkills} emptyText="No technical gaps detected." missing /></div></div></Panel>
           <Panel title="Missing and partial requirements"><div className="grid gap-7"><div><h3 className="mb-3 text-sm font-bold text-rose-700">Missing</h3><RequirementList items={result.missing} emptyText="No missing technical requirements detected." /></div><div><h3 className="mb-3 text-sm font-bold text-amber-700">Partial matches</h3><RequirementList items={result.partiallyMatched} emptyText="No partial matches detected." tone="amber" /></div><details className="rounded-2xl border border-slate-200 p-4"><summary className="cursor-pointer font-bold">View matched evidence ({result.matched.length})</summary><div className="mt-4"><RequirementList items={result.matched} emptyText="No matched evidence." tone="green" /></div></details></div></Panel>
           <Panel title="Exact resume changes" className="border-indigo-200 bg-gradient-to-br from-white to-indigo-50/60"><div className="grid gap-3">{result.tailoringPlan.keywordActions.slice(0, 8).map((item, index) => <article key={item.term} className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm"><div className="flex gap-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-indigo-600 text-xs font-bold text-white">{index + 1}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold">{item.term}</h3><span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">{item.priority}</span></div>{item.location && <div className="mt-3 grid gap-2 rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 text-xs text-slate-700 sm:grid-cols-2"><p><span className="font-bold text-indigo-700">Update area:</span> {item.location.primarySection}</p><p><span className="font-bold text-indigo-700">Missing part:</span> {item.location.missingPart}</p>{item.location.supportingSection && <p><span className="font-bold text-indigo-700">Also support in:</span> {item.location.supportingSection}</p>}<p><span className="font-bold text-indigo-700">Placement confidence:</span> {item.location.confidence}</p>{item.location.targetElement && <p className="sm:col-span-2"><span className="font-bold text-indigo-700">Target existing element:</span> “{item.location.targetElement}”</p>}<p className="sm:col-span-2 text-slate-500">{item.location.placementReason}</p></div>}<p className="mt-3 text-sm leading-6 text-slate-600">{item.guidance}</p>{item.bulletPrompt && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600">Suggested change: {item.bulletPrompt}</p>}</div></div></article>)}</div></Panel>
           <Panel title="Optimization checklist"><div className="grid gap-3">{result.report.checklist.map((check) => <div key={check.item} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><span className={`grid h-7 w-7 place-items-center rounded-full text-xs font-black ${check.passed ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>{check.passed ? 'OK' : '--'}</span><span className="text-sm font-medium">{check.item}</span></div>)}</div></Panel>
-          </> : <FormattingStudio result={result} />}
         </div>}
       </div>
     </div>
