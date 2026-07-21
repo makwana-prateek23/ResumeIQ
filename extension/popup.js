@@ -53,14 +53,7 @@ analyze.addEventListener('click', async () => {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Analysis failed.');
     document.querySelector('#score').textContent = `${data.roleSuitability?.score ?? data.overallScore}%`;
-    renderTags(document.querySelector('#matched'), data.matchedSkills || []);
     renderTags(document.querySelector('#missing'), data.missingSkills || []);
-    const changes = (data.tailoringPlan?.keywordActions || []).slice(0, 5).map((item) => {
-      const row = document.createElement('li');
-      row.textContent = `${item.term}: update ${item.location?.primarySection || item.recommendedSection} — ${item.location?.missingPart || item.guidance}`;
-      return row;
-    });
-    document.querySelector('#changes').replaceChildren(...changes);
     document.querySelector('#results').hidden = false;
   } catch (failure) {
     error.textContent = failure.message || 'Analysis failed.';
