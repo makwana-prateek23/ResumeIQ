@@ -161,3 +161,46 @@ export function parseResume(text) {
     sectionsFound: Object.entries(sections).filter(([, value]) => value).map(([name]) => name)
   };
 }
+
+function nonEmptyLines(value = '') {
+  return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+}
+
+export function buildEditorResume(resume) {
+  const allLines = nonEmptyLines(resume.text);
+  const headingNames = Object.values(SECTION_ALIASES).flat();
+  const headerLines = allLines.filter((line) => !headingNames.includes(normalize(line).replace(/:$/, ''))).slice(0, 8);
+  const email = resume.text.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0] ?? '';
+  const phone = resume.text.match(/(?:\+?\d[\d\s().-]{7,}\d)/)?.[0]?.trim() ?? '';
+  const linkedin = resume.text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s|,]+/i)?.[0] ?? '';
+  const name = headerLines.find((line) => !line.includes('@') && !/\d{3}/.test(line) && line.length <= 60) ?? '';
+  const role = headerLines.find((line) => line !== name && !line.includes('@') && !line.includes('linkedin') && !/\d{3}/.test(line) && line.length <= 80) ?? '';
+  const experienceLines = nonEmptyLines(resume.sections.experience);
+  const datePattern = /((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+)?(?:19|20)\d{2}\s*(?:-|–|—|to)\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+)?(?:Present|Current|Now|(?:19|20)\d{2})/i;
+  const experience = [];
+  for (const line of experienceLines) {
+    const date = line.match(datePattern)?.[0];
+    const isBullet = /^\s*(?:[-•▪◦*]|\d+[.)])\s+/.test(line);
+    if (!isBullet && (date || !experience.length)) {
+      const title = line.replace(date ?? '', '').replace(/[|,]+\s*$/, '').trim();
+      const [jobRole = '', company = ''] = title.split(/\s+(?:—|–|-|\bat\b)\s+/i);
+      const [start = '', end = ''] = (date ?? '').split(/\s*(?:-|–|—|to)\s*/i);
+      experience.push({ id: experience.length + 1, role: jobRole, company, location: '', start, end, bullets: [] });
+    } else if (experience.length) {
+      experience.at(-1).bullets.push(line.replace(/^\s*(?:[-•▪◦*]|\d+[.)])\s+/, ''));
+    }
+  }
+  const education = nonEmptyLines(resume.sections.education).map((line, index) => {
+    const year = line.match(/(?:19|20)\d{2}(?:\s*(?:-|–|—)\s*(?:19|20)\d{2})?/)?.[0] ?? '';
+    const body = line.replace(year, '').replace(/[|,—-]+\s*$/, '').trim();
+    const [degree = '', school = ''] = body.split(/\s+(?:—|–|-|\bat\b|\bfrom\b)\s+/i);
+    return { id: index + 1, degree, school, year };
+  });
+  return {
+    name, role, email, phone, location: '', linkedin,
+    summary: resume.sections.summary,
+    skills: resume.sections.skills || resume.skills.join(', '),
+    experience: experience.length ? experience.map((item) => ({ ...item, bullets: item.bullets.length ? item.bullets : [''] })) : [{ id: 1, role: '', company: '', location: '', start: '', end: '', bullets: [''] }],
+    education: education.length ? education : [{ id: 1, degree: '', school: '', year: '' }]
+  };
+}

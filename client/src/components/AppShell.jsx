@@ -9,6 +9,7 @@ const links = [
 
 function AppShell() {
   const [resumeUploaded, setResumeUploaded] = useState(false);
+  const [editorResumeData, setEditorResumeData] = useState(null);
   const [uploadMessage, setUploadMessage] = useState('');
   const navigate = useNavigate();
 
@@ -31,7 +32,7 @@ function AppShell() {
       </div>
     </header>
     {uploadMessage && <div role="alert" className="fixed left-1/2 top-24 z-[60] flex w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900 shadow-2xl"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-200">!</span><span className="flex-1">{uploadMessage}</span><button type="button" onClick={() => setUploadMessage('')} className="rounded-lg px-2 py-1 text-amber-700 hover:bg-amber-100" aria-label="Dismiss message">×</button></div>}
-    <Outlet context={{ resumeUploaded, setResumeUploaded, setUploadMessage }} />
+    <Outlet context={{ resumeUploaded, setResumeUploaded, uploadMessage, setUploadMessage, editorResumeData, setEditorResumeData }} />
   </div>;
 }
 

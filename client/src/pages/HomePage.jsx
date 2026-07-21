@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
-import { analyzeResume } from '../services/analysis.js';
+import { analyzeResume, extractResume } from '../services/analysis.js';
 import resumeWorkspaceHero from '../assets/resume-workspace-hero.png';
 
 const scoreLabels = { requirements: 'Technical keywords', experience: 'Experience' };
@@ -25,18 +25,19 @@ function Panel({ title, children, className = '' }) {
 }
 
 function HomePage() {
-  const { resumeUploaded, setResumeUploaded, setUploadMessage } = useOutletContext();
+  const { resumeUploaded, setResumeUploaded, setUploadMessage, setEditorResumeData } = useOutletContext();
   const [resume, setResume] = useState(null);
   const [jobDescription, setJobDescription] = useState('');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [isPreparingResume, setIsPreparingResume] = useState(false);
 
   const jdReadiness = useMemo(() => Math.min(100, Math.round((jobDescription.trim().length / 100) * 100)), [jobDescription]);
   const jobDescriptionWords = useMemo(() => jobDescription.trim() ? jobDescription.trim().split(/\s+/).length : 0, [jobDescription]);
 
-  function selectResume(event) {
+  async function selectResume(event) {
     const file = event.target.files?.[0] ?? null;
     setError(''); setResult(null);
     const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
@@ -44,8 +45,22 @@ function HomePage() {
     if (file && (!validTypes.includes(file.type) || !validExtension)) { event.target.value = ''; setResume(null); setResumeUploaded(false); return setError('Choose a valid PDF or Word (.docx) resume.'); }
     if (file && file.size > 5 * 1024 * 1024) { event.target.value = ''; setResume(null); setResumeUploaded(false); return setError('Resume file must be 5 MB or smaller.'); }
     setResume(file);
-    setResumeUploaded(Boolean(file));
-    if (file) setUploadMessage('');
+    setResumeUploaded(false);
+    setEditorResumeData(null);
+    if (!file) return;
+    setIsPreparingResume(true);
+    try {
+      const { data } = await extractResume(file);
+      setEditorResumeData(data.editorData);
+      setResumeUploaded(true);
+      setUploadMessage('');
+    } catch (requestError) {
+      setResume(null);
+      event.target.value = '';
+      setError(requestError.response?.data?.error ?? 'The resume could not be prepared for editing.');
+    } finally {
+      setIsPreparingResume(false);
+    }
   }
 
   function openFormatting(event) {
@@ -71,7 +86,7 @@ function HomePage() {
     if (!resume) return setError('Choose a PDF or Word (.docx) resume.');
     if (jobDescription.trim().length < 100) return setError('Enter at least 100 characters from the job description.');
     setIsAnalyzing(true);
-    try { const { data } = await analyzeResume(resume, jobDescription.trim()); setResult(data); }
+    try { const { data } = await analyzeResume(resume, jobDescription.trim()); setResult(data); setEditorResumeData(data.resume?.editorData ?? null); }
     catch (requestError) { setError(requestError.response?.data?.error ?? 'Analysis failed. Please try again.'); }
     finally { setIsAnalyzing(false); }
   }
@@ -156,17 +171,17 @@ function HomePage() {
       <div id="resume-review" className="mt-8 scroll-mt-28 grid items-start gap-8 lg:grid-cols-[420px_minmax(0,1fr)]">
         <form onSubmit={submitAnalysis} className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-[0_24px_70px_-35px_rgba(15,23,42,0.4)] lg:sticky lg:top-6 sm:p-7">
           <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Step 1</p><h2 className="mt-1 text-xl font-extrabold">Add your resume</h2></div>
-          <label htmlFor="resume" onDragOver={(event) => event.preventDefault()} onDrop={dropResume} className={`mt-5 flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed p-6 text-center transition ${resume ? 'border-emerald-300 bg-emerald-50' : 'border-slate-300 bg-slate-50 hover:-translate-y-0.5 hover:border-indigo-400 hover:bg-indigo-50/50'}`}><span className={`grid h-12 w-12 place-items-center rounded-2xl bg-white text-sm font-black shadow-sm transition ${resume ? 'text-emerald-600' : 'text-indigo-600'}`}>{resume ? '✓' : '↑'}</span><span className="mt-3 text-sm font-bold">{resume ? resume.name : 'Drop your resume or browse files'}</span><span className="mt-1 text-xs text-slate-500">PDF or DOCX, maximum 5 MB, processed in memory</span></label><input id="resume" name="resume" type="file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx" onChange={selectResume} className="sr-only" />
+          <label htmlFor="resume" onDragOver={(event) => event.preventDefault()} onDrop={dropResume} className={`mt-5 flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed p-6 text-center transition ${resumeUploaded ? 'border-emerald-300 bg-emerald-50' : isPreparingResume ? 'border-cyan-300 bg-cyan-50' : 'border-slate-300 bg-slate-50 hover:-translate-y-0.5 hover:border-indigo-400 hover:bg-indigo-50/50'}`}><span className={`grid h-12 w-12 place-items-center rounded-2xl bg-white text-sm font-black shadow-sm transition ${resumeUploaded ? 'text-emerald-600' : 'text-indigo-600'}`}>{isPreparingResume ? '···' : resumeUploaded ? '✓' : '↑'}</span><span className="mt-3 text-sm font-bold">{isPreparingResume ? 'Preparing your resume editor…' : resume ? resume.name : 'Drop your resume or browse files'}</span><span className="mt-1 text-xs text-slate-500">{resumeUploaded ? 'Ready to review and edit' : 'PDF or DOCX, maximum 5 MB, processed in memory'}</span></label><input id="resume" name="resume" type="file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx" onChange={selectResume} className="sr-only" />
           <div className="mt-7 flex items-end justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Step 2</p><label className="mt-1 block text-xl font-extrabold" htmlFor="jobDescription">Paste the job description</label></div><div className="flex items-center gap-3"><span className="text-xs font-semibold text-slate-400">{jobDescriptionWords.toLocaleString()} words · no limit</span>{jobDescription && <button type="button" onClick={() => setJobDescription('')} className="text-xs font-bold text-rose-500 hover:text-rose-700">Clear</button>}</div></div>
           <textarea id="jobDescription" rows="12" value={jobDescription} onChange={(event) => setJobDescription(event.target.value)} placeholder="Paste the complete role description here — there is no length limit..." className="mt-4 w-full resize-y rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100" />
           <div className="mt-3 flex items-center gap-3"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-all ${jdReadiness >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${jdReadiness}%` }} /></div><span className={`text-xs font-bold ${jdReadiness >= 100 ? 'text-emerald-600' : 'text-slate-400'}`}>{jdReadiness >= 100 ? 'Ready to analyze' : `${100 - jobDescription.trim().length} more characters`}</span></div>
           {error && <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</p>}
-          <button type="submit" disabled={isAnalyzing} className="mt-5 w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-500 px-5 py-4 font-bold text-white shadow-lg shadow-indigo-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60">{isAnalyzing ? 'Analyzing technical match...' : 'Analyze my resume'}</button>
+          <button type="submit" disabled={isAnalyzing || isPreparingResume} className="mt-5 w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-500 px-5 py-4 font-bold text-white shadow-lg shadow-indigo-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60">{isPreparingResume ? 'Preparing resume…' : isAnalyzing ? 'Analyzing technical match...' : 'Analyze my resume'}</button>
         </form>
 
         {!result ? <section className="grid min-h-[520px] place-items-center rounded-3xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-[0_24px_70px_-40px_rgba(15,23,42,0.35)] backdrop-blur"><div className="max-w-md"><div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-br from-indigo-100 to-cyan-100 text-3xl font-black text-indigo-600">%</div><h2 className="mt-6 text-2xl font-extrabold">Your match report starts here</h2><p className="mt-3 leading-7 text-slate-500">Upload a resume and job description to see technical keyword coverage, experience alignment, missing terms, and prioritized resume updates.</p><div className="mt-7 grid grid-cols-3 gap-3 text-xs font-semibold text-slate-500"><span className="rounded-xl bg-slate-50 p-3">Keyword match</span><span className="rounded-xl bg-slate-50 p-3">Experience</span><span className="rounded-xl bg-slate-50 p-3">Action plan</span></div></div></section> :
         <div aria-live="polite" className="print-report grid gap-6">
-          <div className="no-print flex justify-end"><button type="button" onClick={downloadPdfReport} disabled={isDownloadingPdf} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60">{isDownloadingPdf ? 'Creating PDF...' : 'Download review PDF'}</button></div>
+          <div className="no-print flex flex-wrap justify-end gap-2"><Link to="/format" className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-700">Edit this resume →</Link><button type="button" onClick={downloadPdfReport} disabled={isDownloadingPdf} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60">{isDownloadingPdf ? 'Creating PDF...' : 'Download review PDF'}</button></div>
           <Panel title="Role suitability"><div className="grid items-center gap-7 sm:grid-cols-[170px_1fr]"><div className="mx-auto grid h-40 w-40 place-items-center rounded-full p-3" style={{ background: `conic-gradient(#4f46e5 ${result.roleSuitability?.score ?? result.overallScore}%, #e2e8f0 0)` }}><div className="grid h-full w-full place-items-center rounded-full bg-white text-center"><div><p className="text-4xl font-black tracking-tight">{result.roleSuitability?.score ?? result.overallScore}%</p><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Role match</p></div></div></div><div>{result.roleSuitability?.targetRole && <p className="mb-5 rounded-xl bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-800">Target role: {result.roleSuitability.targetRole}</p>}<div className="grid gap-5">{Object.entries(result.breakdown).map(([key, score]) => <ScoreBar key={key} label={scoreLabels[key] ?? key} score={score} />)}</div><p className="mt-5 text-xs font-semibold text-slate-400">Parsing confidence: {result.confidence}%</p></div></div></Panel>
           <Panel title="Technical keyword coverage"><div className="grid gap-7 sm:grid-cols-2"><div><h3 className="mb-3 text-sm font-bold text-emerald-700">Matched keywords</h3><TagList items={result.matchedSkills} emptyText="No technical matches found." /></div><div><h3 className="mb-3 text-sm font-bold text-rose-700">Missing keywords</h3><TagList items={result.missingSkills} emptyText="No technical gaps detected." missing /></div></div></Panel>
           <Panel title="Missing and partial requirements"><div className="grid gap-7"><div><h3 className="mb-3 text-sm font-bold text-rose-700">Missing</h3><RequirementList items={result.missing} emptyText="No missing technical requirements detected." /></div><div><h3 className="mb-3 text-sm font-bold text-amber-700">Partial matches</h3><RequirementList items={result.partiallyMatched} emptyText="No partial matches detected." tone="amber" /></div><details className="rounded-2xl border border-slate-200 p-4"><summary className="cursor-pointer font-bold">View matched evidence ({result.matched.length})</summary><div className="mt-4"><RequirementList items={result.matched} emptyText="No matched evidence." tone="green" /></div></details></div></Panel>

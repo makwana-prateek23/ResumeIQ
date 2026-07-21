@@ -19,9 +19,10 @@ function Block({ number, title, hint, children }) {
   return <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="mb-4 flex gap-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-indigo-600 text-xs font-black text-white">{number}</span><div><h2 className="font-extrabold">{title}</h2><p className="mt-0.5 text-xs text-slate-500">{hint}</p></div></div>{children}</section>;
 }
 
-function ResumeWorkspace({ mode = 'create' }) {
+function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
   const storageKey = 'resumeiq-builder-v1';
   const [resume, setResume] = useState(() => {
+    if (initialResumeData) return { ...initialResume, ...initialResumeData };
     try { return JSON.parse(localStorage.getItem(storageKey))?.resume || initialResume; } catch { return initialResume; }
   });
   const [style, setStyle] = useState(() => {
