@@ -163,7 +163,7 @@ export function parseResume(text) {
 }
 
 function nonEmptyLines(value = '') {
-  return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  return value.split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !/^--\s*\d+\s+of\s+\d+\s*--$/i.test(line));
 }
 
 export function buildEditorResume(resume) {
@@ -175,32 +175,49 @@ export function buildEditorResume(resume) {
   const linkedin = resume.text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s|,]+/i)?.[0] ?? '';
   const name = headerLines.find((line) => !line.includes('@') && !/\d{3}/.test(line) && line.length <= 60) ?? '';
   const role = headerLines.find((line) => line !== name && !line.includes('@') && !line.includes('linkedin') && !/\d{3}/.test(line) && line.length <= 80) ?? '';
+  const contactLine = allLines.find((line) => line.includes(email) && email) ?? '';
+  const location = contactLine.split(/[•|]/)[0]?.trim() ?? '';
   const experienceLines = nonEmptyLines(resume.sections.experience);
   const datePattern = /((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+)?(?:19|20)\d{2}\s*(?:-|–|—|to)\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+)?(?:Present|Current|Now|(?:19|20)\d{2})/i;
   const experience = [];
   for (const line of experienceLines) {
     const date = line.match(datePattern)?.[0];
     const isBullet = /^\s*(?:[-•▪◦*]|\d+[.)])\s+/.test(line);
-    if (!isBullet && (date || !experience.length)) {
-      const title = line.replace(date ?? '', '').replace(/[|,]+\s*$/, '').trim();
+    const isRoleHeading = /\s+(?:—|–|\bat\b)\s+/i.test(line) && !isBullet && !date;
+    if (isRoleHeading || (!experience.length && !isBullet && !date)) {
+      const title = line.replace(/[|,]+\s*$/, '').trim();
       const [jobRole = '', company = ''] = title.split(/\s+(?:—|–|-|\bat\b)\s+/i);
-      const [start = '', end = ''] = (date ?? '').split(/\s*(?:-|–|—|to)\s*/i);
-      experience.push({ id: experience.length + 1, role: jobRole, company, location: '', start, end, bullets: [] });
-    } else if (experience.length) {
+      experience.push({ id: experience.length + 1, role: jobRole, company, location: '', start: '', end: '', bullets: [] });
+    } else if (date && experience.length) {
+      const [start = '', end = ''] = date.split(/\s*(?:-|–|—|to)\s*/i);
+      experience.at(-1).start = start;
+      experience.at(-1).end = end;
+    } else if (isBullet && experience.length) {
       experience.at(-1).bullets.push(line.replace(/^\s*(?:[-•▪◦*]|\d+[.)])\s+/, ''));
+    } else if (experience.length && experience.at(-1).bullets.length) {
+      const bullets = experience.at(-1).bullets;
+      bullets[bullets.length - 1] = `${bullets.at(-1)} ${line}`.replace(/\s+/g, ' ').trim();
     }
   }
-  const education = nonEmptyLines(resume.sections.education).map((line, index) => {
+  const educationLines = nonEmptyLines(resume.sections.education).reduce((lines, line) => {
+    if (/^(?:19|20)\d{2}\s*(?:-|–|—)\s*(?:19|20)\d{2}$/.test(line) && lines.length) lines[lines.length - 1] += ` ${line}`;
+    else lines.push(line);
+    return lines;
+  }, []);
+  const education = educationLines.map((line, index) => {
     const year = line.match(/(?:19|20)\d{2}(?:\s*(?:-|–|—)\s*(?:19|20)\d{2})?/)?.[0] ?? '';
     const body = line.replace(year, '').replace(/[|,—-]+\s*$/, '').trim();
-    const [degree = '', school = ''] = body.split(/\s+(?:—|–|-|\bat\b|\bfrom\b)\s+/i);
+    const [degree = '', ...schoolParts] = body.split(/\s+(?:—|–|\bat\b|\bfrom\b)\s+/i);
+    const school = schoolParts.join(' — ');
     return { id: index + 1, degree, school, year };
   });
   return {
-    name, role, email, phone, location: '', linkedin,
+    name, role, email, phone, location, linkedin,
     summary: resume.sections.summary,
     skills: resume.sections.skills || resume.skills.join(', '),
-    experience: experience.length ? experience.map((item) => ({ ...item, bullets: item.bullets.length ? item.bullets : [''] })) : [{ id: 1, role: '', company: '', location: '', start: '', end: '', bullets: [''] }],
-    education: education.length ? education : [{ id: 1, degree: '', school: '', year: '' }]
+    experience,
+    education,
+    sectionOrder: ['summary', 'experience', 'skills', 'education'],
+    imported: true
   };
 }

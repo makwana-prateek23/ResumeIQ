@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { analyzeMatch } from '../src/services/ats.service.js';
-import { calculateExperienceFromDates, parseResume } from '../src/services/resume.service.js';
+import { buildEditorResume, calculateExperienceFromDates, parseResume } from '../src/services/resume.service.js';
 
 const resumeText = `
 Jane Developer
@@ -28,6 +28,34 @@ test('parses recognized resume sections and skills', () => {
   assert.ok(resume.sectionsFound.includes('projects'));
   assert.ok(resume.skills.includes('react'));
   assert.equal(resume.experienceYears, 5);
+});
+
+test('preserves imported experience without inventing placeholder jobs', () => {
+  const parsed = parseResume(`Shital Yadav
+AI/ML Engineer
+Ahmedabad • shital@example.com
+PROFESSIONAL SUMMARY
+Machine learning engineer.
+EXPERIENCE
+Senior AI/ML Engineer — Amoha Recruitment Services
+Jan 2026 – Present
+• Built production machine learning systems with Python and TensorFlow.
+  Improved model monitoring and deployment reliability.
+Junior AI/ML Engineer — Lancer IT Solutions
+Jun 2025 – Dec 2025
+• Developed classification and NLP models.
+SKILLS
+Python, TensorFlow, SQL
+EDUCATION
+Masters in Data Science — Purdue University — 2022 - 2024
+-- 1 of 1 --`);
+  const editor = buildEditorResume(parsed);
+  assert.equal(editor.experience.length, 2);
+  assert.equal(editor.experience[0].role, 'Senior AI/ML Engineer');
+  assert.equal(editor.experience[0].start, 'Jan 2026');
+  assert.match(editor.experience[0].bullets[0], /monitoring and deployment reliability/);
+  assert.equal(editor.education.length, 1);
+  assert.equal(editor.imported, true);
 });
 
 test('produces a bounded, deterministic weighted analysis', () => {

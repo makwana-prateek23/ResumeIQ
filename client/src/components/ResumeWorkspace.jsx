@@ -23,10 +23,11 @@ function Block({ number, title, hint, children }) {
 const sectionLabels = { summary: 'Summary', experience: 'Experience', skills: 'Skills', education: 'Education' };
 
 function PreviewSectionContent({ section, resume, color }) {
-  if (section === 'summary') return <ResumeSection title="Professional Summary" color={color}><p className="break-words">{resume.summary || 'Write a focused 2–4 line summary that highlights your experience, specialization, and strongest result.'}</p></ResumeSection>;
-  if (section === 'experience') return <ResumeSection title="Experience" color={color}>{resume.experience.map((item) => <div key={item.id} className="mb-4 break-inside-avoid"><div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-bold text-slate-950"><span>{item.role || 'ROLE TITLE'}{item.company ? ` · ${item.company}` : ' · COMPANY'}</span><span className="whitespace-nowrap">{item.start || 'START'} – {item.end || 'END'}</span></div><ul className="mt-1 list-disc space-y-0.5 pl-5">{item.bullets.map((bullet, index) => <li key={index} className="break-words">{bullet || 'Describe what you achieved, how you did it, and the measurable result.'}</li>)}</ul></div>)}</ResumeSection>;
-  if (section === 'skills') return <ResumeSection title="Skills" color={color}><p className="break-words">{resume.skills || 'Add relevant skills separated by commas.'}</p></ResumeSection>;
-  if (section === 'education') return <ResumeSection title="Education" color={color}>{resume.education.map((item) => <div key={item.id} className="mb-1 flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5 font-bold"><span className="min-w-0 flex-1 break-words">{item.degree || 'DEGREE'} · {item.school || 'INSTITUTION'}</span><span className="whitespace-nowrap">{item.year || 'YEAR'}</span></div>)}</ResumeSection>;
+  const placeholder = (value, fallback) => value || (resume.imported ? '' : fallback);
+  if (section === 'summary') return <ResumeSection title="Professional Summary" color={color}><p className="break-words">{placeholder(resume.summary, 'Write a focused 2–4 line summary that highlights your experience, specialization, and strongest result.')}</p></ResumeSection>;
+  if (section === 'experience') return <ResumeSection title="Experience" color={color}>{resume.experience.map((item) => <div key={item.id} className="mb-4 break-inside-avoid"><div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-bold text-slate-950"><span>{placeholder(item.role, 'ROLE TITLE')}{item.company ? ` · ${item.company}` : resume.imported ? '' : ' · COMPANY'}</span>{(item.start || item.end || !resume.imported) && <span className="whitespace-nowrap">{placeholder(item.start, 'START')} – {placeholder(item.end, 'END')}</span>}</div>{item.bullets.length > 0 && <ul className="mt-1 list-disc space-y-0.5 pl-5">{item.bullets.map((bullet, index) => <li key={index} className="break-words">{placeholder(bullet, 'Describe what you achieved, how you did it, and the measurable result.')}</li>)}</ul>}</div>)}</ResumeSection>;
+  if (section === 'skills') return <ResumeSection title="Skills" color={color}><p className="break-words">{placeholder(resume.skills, 'Add relevant skills separated by commas.')}</p></ResumeSection>;
+  if (section === 'education') return <ResumeSection title="Education" color={color}>{resume.education.map((item) => <div key={item.id} className="mb-1 flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5 font-bold"><span className="min-w-0 flex-1 break-words">{placeholder(item.degree, 'DEGREE')}{item.school ? ` · ${item.school}` : resume.imported ? '' : ' · INSTITUTION'}</span><span className="whitespace-nowrap">{placeholder(item.year, 'YEAR')}</span></div>)}</ResumeSection>;
   return null;
 }
 
@@ -77,15 +78,26 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       const { jsPDF } = await import('jspdf');
       const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
       const margin = style.margin + 14;
+      const pageHeight = pdf.internal.pageSize.getHeight();
       const width = pdf.internal.pageSize.getWidth() - margin * 2;
       let y = margin;
       const text = (value, size = style.size, weight = 'normal', gap = 5, color = '#334155') => {
         if (!value) return;
         pdf.setFont('helvetica', weight); pdf.setFontSize(size); pdf.setTextColor(color);
         const lines = pdf.splitTextToSize(String(value), width);
-        lines.forEach((line) => { if (y > 790) { pdf.addPage(); y = margin; } pdf.text(line, margin, y); y += size * style.spacing; }); y += gap;
+        lines.forEach((line) => { if (y > pageHeight - margin) { pdf.addPage(); y = margin; } pdf.text(line, margin, y); y += size * style.spacing; }); y += gap;
       };
-      const heading = (value) => { y += 5; text(value.toUpperCase(), 10, 'bold', 5, style.accent); pdf.setDrawColor(style.accent); pdf.line(margin, y - 3, margin + width, y - 3); };
+      const heading = (value) => {
+        if (y > pageHeight - margin - 24) { pdf.addPage(); y = margin; }
+        y += 8;
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10); pdf.setTextColor(style.accent);
+        const label = value.toUpperCase();
+        pdf.text(label, margin, y);
+        const labelWidth = pdf.getTextWidth(label);
+        pdf.setDrawColor(style.accent); pdf.setLineWidth(0.5);
+        pdf.line(margin + labelWidth + 10, y - 3, margin + width, y - 3);
+        y += 15;
+      };
       text(resume.name || 'YOUR NAME', 22, 'bold', 2, '#0f172a');
       text(resume.role || 'TARGET ROLE', 12, 'bold', 3, style.accent);
       text([resume.location, resume.phone, resume.email, resume.linkedin].filter(Boolean).join('  •  '), 9, 'normal', 8);
@@ -115,7 +127,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
 
       <aside className="self-start">
         <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="grid gap-3 sm:grid-cols-3"><label className="text-xs font-bold text-slate-600">Font<select value={style.font} onChange={(e) => setStyle({ ...style, font: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option>Arial</option><option>Calibri</option><option>Georgia</option><option>Times New Roman</option></select></label><label className="text-xs font-bold text-slate-600">Text size<select value={style.size} onChange={(e) => setStyle({ ...style, size: Number(e.target.value) })} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option value="10">10 pt</option><option value="10.5">10.5 pt</option><option value="11">11 pt</option><option value="12">12 pt</option></select></label><label className="text-xs font-bold text-slate-600">Spacing<select value={style.spacing} onChange={(e) => setStyle({ ...style, spacing: Number(e.target.value) })} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option value="1.3">Compact</option><option value="1.45">Normal</option><option value="1.65">Spacious</option></select></label></div><div className="mt-4 border-t border-slate-100 pt-3"><p className="text-xs font-bold text-slate-600">Drag to reorder entire sections</p><div className="mt-2 flex flex-wrap gap-2">{(resume.sectionOrder || initialResume.sectionOrder).map((section) => <button key={section} type="button" draggable onDragStart={() => setDraggedSection(section)} onDragOver={(event) => event.preventDefault()} onDrop={() => moveSection(section)} onDragEnd={() => setDraggedSection(null)} className={`cursor-grab rounded-lg border px-3 py-2 text-xs font-bold active:cursor-grabbing ${draggedSection === section ? 'border-indigo-400 bg-indigo-50 text-indigo-700 opacity-60' : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300'}`}><span className="mr-1 text-slate-400">⠿</span>{sectionLabels[section]}</button>)}</div></div><div className="mt-3 flex flex-wrap items-center gap-2"><label className="mr-auto flex items-center gap-2 text-xs font-bold text-slate-600">Heading color <input type="color" value={style.accent} onChange={(e) => setStyle({ ...style, accent: e.target.value })} className="h-8 w-10" /></label><button type="button" onClick={resetDraft} className="rounded-lg px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50">Start over</button><button type="button" onClick={saveDraft} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold hover:bg-slate-50">{saved ? 'Saved ✓' : 'Save draft'}</button><button type="button" onClick={downloadPdf} disabled={downloading} className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60">{downloading ? 'Creating…' : 'Download PDF'}</button></div></div>
-        <div className="overflow-x-auto overflow-y-visible rounded-2xl bg-slate-200 p-3 pb-8 sm:p-6 sm:pb-10"><article className="mx-auto min-h-[842px] min-w-[520px] max-w-[595px] bg-white shadow-2xl" style={{ padding: `${style.margin}px`, fontFamily: style.font, fontSize: `${style.size}px`, lineHeight: style.spacing }}><header className={style.template === 'modern' ? 'text-left' : 'text-center'}><h1 className="text-[2.25em] font-black tracking-tight text-slate-950">{resume.name || 'YOUR NAME'}</h1><p className="mt-1 text-[1.2em] font-bold" style={{ color: style.accent }}>{resume.role || 'TARGET ROLE'}</p><p className="mt-2 break-words text-[0.9em] text-slate-500">{contact || 'City, State · phone · email · LinkedIn'}</p></header>{(resume.sectionOrder || initialResume.sectionOrder).map((section) => <PreviewSectionContent key={section} section={section} resume={resume} color={style.accent} />)}</article></div>
+        <div className="overflow-x-auto overflow-y-visible rounded-2xl bg-slate-200 p-3 pb-8 sm:p-6 sm:pb-10"><article className="mx-auto min-h-[842px] min-w-[520px] max-w-[595px] bg-white shadow-2xl" style={{ padding: `${style.margin}px`, fontFamily: style.font, fontSize: `${style.size}px`, lineHeight: style.spacing }}><header className={style.template === 'modern' ? 'text-left' : 'text-center'}><h1 className="text-[2.25em] font-black tracking-tight text-slate-950">{resume.name || (resume.imported ? '' : 'YOUR NAME')}</h1><p className="mt-1 text-[1.2em] font-bold" style={{ color: style.accent }}>{resume.role || (resume.imported ? '' : 'TARGET ROLE')}</p><p className="mt-2 break-words text-[0.9em] text-slate-500">{contact || (resume.imported ? '' : 'City, State · phone · email · LinkedIn')}</p></header>{(resume.sectionOrder || initialResume.sectionOrder).map((section) => <PreviewSectionContent key={section} section={section} resume={resume} color={style.accent} />)}</article></div>
       </aside>
     </div>
   </main>;
