@@ -11,6 +11,47 @@ const initialResume = {
 
 const initialStyle = { font: 'Arial', size: 10.5, spacing: 1.45, accent: '#000000', margin: 34, template: 'classic' };
 const makeId = () => Date.now() + Math.random();
+const pageMarker = /^--?\s*\d+\s+of\s+\d+(?:\s*--)?$/i;
+
+function cleanImportedResume(data) {
+  if (!data?.imported) return data;
+  const cleanedExperience = [];
+  let current = null;
+  for (const item of data.experience || []) {
+    const realHeading = (item.role && !/^role title$/i.test(item.role)) || (item.company && !/^company(?: name)?$/i.test(item.company));
+    if (realHeading) {
+      current = { ...item, bullets: [] };
+      cleanedExperience.push(current);
+    } else if (!current) {
+      continue;
+    }
+    if (item.start) current.start = item.start;
+    if (item.end) current.end = item.end;
+    for (const rawBullet of item.bullets || []) {
+      const bullet = rawBullet.trim();
+      if (!bullet || pageMarker.test(bullet)) continue;
+      const headingParts = bullet.split(/\s+(?:—|–)\s+/);
+      if (headingParts.length === 2 && bullet.length < 140) {
+        current = { id: makeId(), role: headingParts[0], company: headingParts[1], location: '', start: '', end: '', bullets: [] };
+        cleanedExperience.push(current);
+        continue;
+      }
+      const previous = current.bullets.at(-1);
+      if (previous && !/[.!?)]$/.test(previous)) current.bullets[current.bullets.length - 1] = `${previous} ${bullet}`;
+      else current.bullets.push(bullet);
+    }
+  }
+  const cleanedEducation = (data.education || []).filter((item) => {
+    const values = [item.degree, item.school, item.year].map((value) => String(value || '').trim());
+    if (values.some((value) => pageMarker.test(value))) return false;
+    return values.some((value) => value && !/^(degree|institution|school|year|b\.s\. design|state university)$/i.test(value));
+  });
+  return { ...data, experience: cleanedExperience, education: cleanedEducation };
+}
+
+function hydrateResume(data) {
+  return cleanImportedResume({ ...initialResume, ...data });
+}
 
 function Field({ label, className = '', ...props }) {
   return <label className={`block text-xs font-bold text-slate-600 ${className}`}>{label}<input {...props} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100" /></label>;
@@ -34,8 +75,11 @@ function PreviewSectionContent({ section, resume, color }) {
 function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
   const storageKey = 'resumeiq-builder-v1';
   const [resume, setResume] = useState(() => {
-    if (initialResumeData) return { ...initialResume, ...initialResumeData };
-    try { return JSON.parse(localStorage.getItem(storageKey))?.resume || initialResume; } catch { return initialResume; }
+    if (initialResumeData) return hydrateResume(initialResumeData);
+    try {
+      const savedResume = JSON.parse(localStorage.getItem(storageKey))?.resume;
+      return savedResume ? hydrateResume(savedResume) : initialResume;
+    } catch { return initialResume; }
   });
   const [style, setStyle] = useState(() => {
     try {
