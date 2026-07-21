@@ -33,6 +33,7 @@ function HomePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isPreparingResume, setIsPreparingResume] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState('');
 
   const jdReadiness = useMemo(() => Math.min(100, Math.round((jobDescription.trim().length / 100) * 100)), [jobDescription]);
   const jobDescriptionWords = useMemo(() => jobDescription.trim() ? jobDescription.trim().split(/\s+/).length : 0, [jobDescription]);
@@ -45,19 +46,19 @@ function HomePage() {
     if (file && (!validTypes.includes(file.type) || !validExtension)) { event.target.value = ''; setResume(null); setResumeUploaded(false); return setError('Choose a valid PDF or Word (.docx) resume.'); }
     if (file && file.size > 5 * 1024 * 1024) { event.target.value = ''; setResume(null); setResumeUploaded(false); return setError('Resume file must be 5 MB or smaller.'); }
     setResume(file);
-    setResumeUploaded(false);
+    setResumeUploaded(true);
     setEditorResumeData(null);
+    setUploadNotice('Resume uploaded. Preparing editable sections…');
     if (!file) return;
     setIsPreparingResume(true);
     try {
       const { data } = await extractResume(file);
       setEditorResumeData(data.editorData);
-      setResumeUploaded(true);
+      setUploadNotice('Resume uploaded and ready to edit.');
       setUploadMessage('');
     } catch (requestError) {
-      setResume(null);
-      event.target.value = '';
-      setError(requestError.response?.data?.error ?? 'The resume could not be prepared for editing.');
+      setUploadNotice('Resume uploaded for review. Complete the analysis to prepare its editable sections.');
+      if (requestError.response?.status && requestError.response.status !== 404) setError(requestError.response?.data?.error ?? 'Automatic editor preparation is temporarily unavailable.');
     } finally {
       setIsPreparingResume(false);
     }
@@ -171,7 +172,8 @@ function HomePage() {
       <div id="resume-review" className="mt-8 scroll-mt-28 grid items-start gap-8 lg:grid-cols-[420px_minmax(0,1fr)]">
         <form onSubmit={submitAnalysis} className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-[0_24px_70px_-35px_rgba(15,23,42,0.4)] lg:sticky lg:top-6 sm:p-7">
           <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Step 1</p><h2 className="mt-1 text-xl font-extrabold">Add your resume</h2></div>
-          <label htmlFor="resume" onDragOver={(event) => event.preventDefault()} onDrop={dropResume} className={`mt-5 flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed p-6 text-center transition ${resumeUploaded ? 'border-emerald-300 bg-emerald-50' : isPreparingResume ? 'border-cyan-300 bg-cyan-50' : 'border-slate-300 bg-slate-50 hover:-translate-y-0.5 hover:border-indigo-400 hover:bg-indigo-50/50'}`}><span className={`grid h-12 w-12 place-items-center rounded-2xl bg-white text-sm font-black shadow-sm transition ${resumeUploaded ? 'text-emerald-600' : 'text-indigo-600'}`}>{isPreparingResume ? '···' : resumeUploaded ? '✓' : '↑'}</span><span className="mt-3 text-sm font-bold">{isPreparingResume ? 'Preparing your resume editor…' : resume ? resume.name : 'Drop your resume or browse files'}</span><span className="mt-1 text-xs text-slate-500">{resumeUploaded ? 'Ready to review and edit' : 'PDF or DOCX, maximum 5 MB, processed in memory'}</span></label><input id="resume" name="resume" type="file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx" onChange={selectResume} className="sr-only" />
+          <label htmlFor="resume" onDragOver={(event) => event.preventDefault()} onDrop={dropResume} className={`mt-5 flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed p-6 text-center transition ${isPreparingResume ? 'border-cyan-300 bg-cyan-50' : resumeUploaded ? 'border-emerald-300 bg-emerald-50' : 'border-slate-300 bg-slate-50 hover:-translate-y-0.5 hover:border-indigo-400 hover:bg-indigo-50/50'}`}><span className={`grid h-12 w-12 place-items-center rounded-2xl bg-white text-sm font-black shadow-sm transition ${isPreparingResume ? 'animate-pulse text-cyan-600' : resumeUploaded ? 'text-emerald-600' : 'text-indigo-600'}`}>{isPreparingResume ? '···' : resumeUploaded ? '✓' : '↑'}</span><span className="mt-3 text-sm font-bold">{isPreparingResume ? 'Preparing your resume editor…' : resume ? resume.name : 'Drop your resume or browse files'}</span><span className="mt-1 text-xs text-slate-500">{isPreparingResume ? 'Extracting editable sections' : resumeUploaded ? 'Ready to review and edit' : 'PDF or DOCX, maximum 5 MB, processed in memory'}</span></label><input id="resume" name="resume" type="file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx" onChange={selectResume} className="sr-only" />
+          {uploadNotice && <p className="mt-2 text-center text-xs font-semibold text-emerald-700">{uploadNotice}</p>}
           <div className="mt-7 flex items-end justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Step 2</p><label className="mt-1 block text-xl font-extrabold" htmlFor="jobDescription">Paste the job description</label></div><div className="flex items-center gap-3"><span className="text-xs font-semibold text-slate-400">{jobDescriptionWords.toLocaleString()} words · no limit</span>{jobDescription && <button type="button" onClick={() => setJobDescription('')} className="text-xs font-bold text-rose-500 hover:text-rose-700">Clear</button>}</div></div>
           <textarea id="jobDescription" rows="12" value={jobDescription} onChange={(event) => setJobDescription(event.target.value)} placeholder="Paste the complete role description here — there is no length limit..." className="mt-4 w-full resize-y rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100" />
           <div className="mt-3 flex items-center gap-3"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-all ${jdReadiness >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${jdReadiness}%` }} /></div><span className={`text-xs font-bold ${jdReadiness >= 100 ? 'text-emerald-600' : 'text-slate-400'}`}>{jdReadiness >= 100 ? 'Ready to analyze' : `${100 - jobDescription.trim().length} more characters`}</span></div>
