@@ -3,7 +3,7 @@ import { analyzeMatch } from '../services/ats.service.js';
 import { extractResumeText, parseResume } from '../services/resume.service.js';
 
 const requestSchema = z.object({
-  jobDescription: z.string().trim().min(100).max(20_000)
+  jobDescription: z.string().trim().min(100)
 });
 
 export async function analyzeResume(req, res) {
@@ -14,7 +14,7 @@ export async function analyzeResume(req, res) {
   const validation = requestSchema.safeParse(req.body);
   if (!validation.success) {
     return res.status(400).json({
-      error: 'Job description must contain between 100 and 20,000 characters'
+      error: 'Job description must contain at least 100 characters'
     });
   }
 

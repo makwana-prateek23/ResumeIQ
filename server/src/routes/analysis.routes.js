@@ -8,7 +8,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { files: 1, fileSize: MAX_FILE_SIZE, fields: 2 },
+  limits: { files: 1, fileSize: MAX_FILE_SIZE, fields: 2, fieldSize: Infinity },
   fileFilter(_req, file, callback) {
     const name = file.originalname.toLowerCase();
     const isPdf = name.endsWith('.pdf') && file.mimetype === 'application/pdf';

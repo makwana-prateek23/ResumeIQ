@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { analyzeResume } from '../services/analysis.js';
+import resumeWorkspaceHero from '../assets/resume-workspace-hero.png';
 
 const scoreLabels = { requirements: 'Technical keywords', experience: 'Experience' };
 
@@ -32,6 +33,7 @@ function HomePage() {
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const jdReadiness = useMemo(() => Math.min(100, Math.round((jobDescription.trim().length / 100) * 100)), [jobDescription]);
+  const jobDescriptionWords = useMemo(() => jobDescription.trim() ? jobDescription.trim().split(/\s+/).length : 0, [jobDescription]);
 
   function selectResume(event) {
     const file = event.target.files?.[0] ?? null;
@@ -41,6 +43,17 @@ function HomePage() {
     if (file && (!validTypes.includes(file.type) || !validExtension)) { event.target.value = ''; setResume(null); return setError('Choose a valid PDF or Word (.docx) resume.'); }
     if (file && file.size > 5 * 1024 * 1024) { event.target.value = ''; setResume(null); return setError('Resume file must be 5 MB or smaller.'); }
     setResume(file);
+  }
+
+  function dropResume(event) {
+    event.preventDefault();
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    const input = document.querySelector('#resume');
+    input.files = transfer.files;
+    selectResume({ target: input });
   }
 
   async function submitAnalysis(event) {
@@ -120,7 +133,7 @@ function HomePage() {
   return <main className="relative min-h-screen overflow-hidden bg-[#f5f7fb] text-slate-900">
     <div className="pointer-events-none absolute -left-40 -top-40 h-96 w-96 rounded-full bg-cyan-200/40 blur-3xl" /><div className="pointer-events-none absolute right-0 top-64 h-96 w-96 rounded-full bg-indigo-200/40 blur-3xl" />
     <div className="relative z-10 mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
-      <header className="relative overflow-hidden rounded-[2rem] bg-slate-950 px-7 py-10 text-white shadow-2xl shadow-slate-300 sm:px-12 sm:py-14"><div className="absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.22),transparent_65%)]" /><div className="relative max-w-3xl"><span className="inline-flex rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-cyan-300">Technical match intelligence</span><h1 className="mt-5 text-4xl font-black leading-tight tracking-tight sm:text-6xl">Turn every job description into a clearer resume strategy.</h1><p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">Find the technical keywords you match, the ones you miss, and the experience evidence that will strengthen your application.</p><div className="mt-7 flex flex-wrap gap-5 text-xs font-semibold text-slate-300"><span>70% technical keywords</span><span>30% experience</span><span>Explainable TF-IDF scoring</span></div></div></header>
+      <header className="relative overflow-hidden rounded-[2rem] bg-slate-950 px-7 py-10 text-white shadow-2xl shadow-slate-300 sm:px-12 sm:py-14"><div className="absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.22),transparent_65%)]" /><div className="relative grid items-center gap-9 lg:grid-cols-[1.05fr_0.95fr]"><div><span className="inline-flex rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-cyan-300">Technical match intelligence</span><h1 className="mt-5 text-4xl font-black leading-tight tracking-tight sm:text-6xl">Turn every job description into a clearer resume strategy.</h1><p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">Review, edit, format, or create a resume in one focused workspace.</p><div className="mt-7 flex flex-wrap gap-5 text-xs font-semibold text-slate-300"><span>Evidence-based review</span><span>Simple formatting</span><span>Guided creation</span></div></div><div className="relative hidden lg:block"><div className="absolute inset-8 rounded-full bg-cyan-400/20 blur-3xl" /><img src={resumeWorkspaceHero} alt="Illustration of a resume with review checks and formatting controls" className="relative w-full rounded-3xl object-cover shadow-2xl shadow-black/30 transition duration-700 hover:scale-[1.02]" /></div></div></header>
 
       <section className="relative z-20 -mt-5 grid gap-4 px-3 md:grid-cols-3 sm:px-7" aria-label="Choose a resume tool">
         <a href="#resume-review" className="group rounded-2xl border border-indigo-200 bg-white p-5 shadow-xl shadow-slate-200/60 transition hover:-translate-y-1 hover:border-indigo-400"><div className="flex items-start justify-between"><span className="grid h-11 w-11 place-items-center rounded-xl bg-indigo-100 text-lg font-black text-indigo-700">01</span><span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-indigo-600">→</span></div><h2 className="mt-4 text-lg font-black">Review my resume</h2><p className="mt-2 text-sm leading-6 text-slate-500">Upload your resume and compare it with a job description.</p></a>
@@ -133,9 +146,9 @@ function HomePage() {
       <div id="resume-review" className="mt-8 scroll-mt-28 grid items-start gap-8 lg:grid-cols-[420px_minmax(0,1fr)]">
         <form onSubmit={submitAnalysis} className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-[0_24px_70px_-35px_rgba(15,23,42,0.4)] lg:sticky lg:top-6 sm:p-7">
           <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Step 1</p><h2 className="mt-1 text-xl font-extrabold">Add your resume</h2></div>
-          <label htmlFor="resume" className={`mt-5 flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed p-6 text-center transition ${resume ? 'border-emerald-300 bg-emerald-50' : 'border-slate-300 bg-slate-50 hover:border-indigo-400 hover:bg-indigo-50/50'}`}><span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-sm font-black shadow-sm">PDF/DOCX</span><span className="mt-3 text-sm font-bold">{resume ? resume.name : 'Choose your PDF or Word resume'}</span><span className="mt-1 text-xs text-slate-500">PDF or DOCX, maximum 5 MB, processed in memory</span></label><input id="resume" name="resume" type="file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx" onChange={selectResume} className="sr-only" />
-          <div className="mt-7 flex items-end justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Step 2</p><label className="mt-1 block text-xl font-extrabold" htmlFor="jobDescription">Paste the job description</label></div><span className="text-xs text-slate-400">{jobDescription.length}/20,000</span></div>
-          <textarea id="jobDescription" rows="12" maxLength="20000" value={jobDescription} onChange={(event) => setJobDescription(event.target.value)} placeholder="Paste the complete role description here..." className="mt-4 w-full resize-y rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100" />
+          <label htmlFor="resume" onDragOver={(event) => event.preventDefault()} onDrop={dropResume} className={`mt-5 flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed p-6 text-center transition ${resume ? 'border-emerald-300 bg-emerald-50' : 'border-slate-300 bg-slate-50 hover:-translate-y-0.5 hover:border-indigo-400 hover:bg-indigo-50/50'}`}><span className={`grid h-12 w-12 place-items-center rounded-2xl bg-white text-sm font-black shadow-sm transition ${resume ? 'text-emerald-600' : 'text-indigo-600'}`}>{resume ? '✓' : '↑'}</span><span className="mt-3 text-sm font-bold">{resume ? resume.name : 'Drop your resume or browse files'}</span><span className="mt-1 text-xs text-slate-500">PDF or DOCX, maximum 5 MB, processed in memory</span></label><input id="resume" name="resume" type="file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx" onChange={selectResume} className="sr-only" />
+          <div className="mt-7 flex items-end justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Step 2</p><label className="mt-1 block text-xl font-extrabold" htmlFor="jobDescription">Paste the job description</label></div><div className="flex items-center gap-3"><span className="text-xs font-semibold text-slate-400">{jobDescriptionWords.toLocaleString()} words · no limit</span>{jobDescription && <button type="button" onClick={() => setJobDescription('')} className="text-xs font-bold text-rose-500 hover:text-rose-700">Clear</button>}</div></div>
+          <textarea id="jobDescription" rows="12" value={jobDescription} onChange={(event) => setJobDescription(event.target.value)} placeholder="Paste the complete role description here — there is no length limit..." className="mt-4 w-full resize-y rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100" />
           <div className="mt-3 flex items-center gap-3"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-all ${jdReadiness >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${jdReadiness}%` }} /></div><span className={`text-xs font-bold ${jdReadiness >= 100 ? 'text-emerald-600' : 'text-slate-400'}`}>{jdReadiness >= 100 ? 'Ready to analyze' : `${100 - jobDescription.trim().length} more characters`}</span></div>
           {error && <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</p>}
           <button type="submit" disabled={isAnalyzing} className="mt-5 w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-500 px-5 py-4 font-bold text-white shadow-lg shadow-indigo-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60">{isAnalyzing ? 'Analyzing technical match...' : 'Analyze my resume'}</button>

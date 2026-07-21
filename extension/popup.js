@@ -12,13 +12,13 @@ document.querySelector('#extract').addEventListener('click', async () => {
       target: { tabId: tab.id },
       func: () => {
         const selected = window.getSelection()?.toString().trim();
-        if (selected?.length >= 100) return selected.slice(0, 20000);
+        if (selected?.length >= 100) return selected;
         const selectors = ['[data-testid*="job"]', '[class*="job-description"]', '[class*="jobDescription"]', 'article', 'main'];
         const candidates = selectors.flatMap((selector) => [...document.querySelectorAll(selector)])
           .map((element) => element.innerText?.trim())
           .filter((text) => text && text.length >= 100)
           .sort((a, b) => b.length - a.length);
-        return (candidates[0] || '').slice(0, 20000);
+        return candidates[0] || '';
       }
     });
     if (!result) throw new Error('Select the job description on the page, then try again.');
