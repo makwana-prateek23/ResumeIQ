@@ -19,14 +19,29 @@ const makeId = () => Date.now() + Math.random();
 const pageMarker = /^--?\s*\d+\s+of\s+\d+(?:\s*--)?$/i;
 
 function parseSkillRows(value = '') {
-  return String(value)
+  const categoryNames = [
+    'Programming Languages', 'Frontend', 'Backend', 'Databases', 'API & Authentication',
+    'Tools & Platforms', 'Cloud & DevOps', 'AI & Development Tools', 'Concepts',
+    'Frameworks', 'Libraries', 'Testing', 'DevOps', 'Cloud', 'Data', 'Design', 'Research'
+  ];
+  const categoryPattern = new RegExp(`^(${categoryNames.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?:\\s*[:|]\\s*|\\s+)(.*)$`, 'i');
+  const lines = String(value)
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const match = line.match(/^([^:]{2,60}):\s*(.+)$/);
-      return match ? { category: match[1].trim(), skills: match[2].trim() } : { category: '', skills: line };
-    });
+    .filter(Boolean);
+  const rows = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const separated = line.match(/^([^:|]{2,60})\s*[:|]\s*(.+)$/);
+    const known = line.match(categoryPattern);
+    if (separated) rows.push({ category: separated[1].trim(), skills: separated[2].trim() });
+    else if (known && known[2]) rows.push({ category: known[1].trim(), skills: known[2].trim() });
+    else if (categoryNames.some((name) => name.toLowerCase() === line.toLowerCase()) && lines[index + 1]) {
+      rows.push({ category: line, skills: lines[index + 1] });
+      index += 1;
+    } else rows.push({ category: '', skills: line });
+  }
+  return rows;
 }
 
 function SkillsContent({ value, fallback = '' }) {
