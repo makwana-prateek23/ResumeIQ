@@ -58,6 +58,27 @@ Masters in Data Science — Purdue University — 2022 - 2024
   assert.equal(editor.imported, true);
 });
 
+test('keeps role, company, and location in their correct experience fields', () => {
+  const editor = buildEditorResume(parseResume(`Prateek Makwana
+EXPERIENCE
+Software Developer — Amoha Recruitment Services | Ahmedabad, India
+Jan 2024 – Present
+• Built an internal CRM application.
+Software Development — Prisha Software Pvt. Ltd. | Rajkot, India
+June 2023 – Dec 2023
+• Maintained frontend applications.
+EDUCATION
+Bachelor of Technology — Example University — 2024`));
+
+  assert.deepEqual(
+    editor.experience.map(({ role, company, location }) => ({ role, company, location })),
+    [
+      { role: 'Software Developer', company: 'Amoha Recruitment Services', location: 'Ahmedabad, India' },
+      { role: 'Software Development', company: 'Prisha Software Pvt. Ltd.', location: 'Rajkot, India' }
+    ]
+  );
+});
+
 test('produces a bounded, deterministic weighted analysis', () => {
   const result = analyzeMatch(parseResume(resumeText), jobDescription);
   assert.ok(result.overallScore >= 0 && result.overallScore <= 100);

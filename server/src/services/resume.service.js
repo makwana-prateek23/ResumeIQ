@@ -189,13 +189,23 @@ export function buildEditorResume(resume) {
     if (isRoleHeading || (!experience.length && !isBullet && !date)) {
       let jobRole = '';
       let company = '';
+      let jobLocation = '';
       if (title.includes('|')) {
-        [company = '', jobRole = ''] = title.split('|').map((value) => value.trim());
+        const pipeParts = title.split('|').map((value) => value.trim()).filter(Boolean);
+        const primaryParts = pipeParts[0].split(/\s+(?:—|–|\bat\b)\s+/i).map((value) => value.trim()).filter(Boolean);
+        if (primaryParts.length > 1) {
+          [jobRole = '', company = ''] = primaryParts;
+          jobLocation = pipeParts.slice(1).join(' | ');
+        } else if (/\b(?:engineer|developer|development|manager|analyst|designer|consultant|intern|specialist|architect|administrator|scientist|lead|director|coordinator)\b/i.test(pipeParts[1] || '')) {
+          [company = '', jobRole = '', jobLocation = ''] = pipeParts;
+        } else {
+          [jobRole = '', jobLocation = ''] = pipeParts;
+        }
       } else {
         [jobRole = '', company = ''] = title.split(/\s+(?:—|–|\bat\b)\s+/i);
       }
       const [start = '', end = ''] = (date ?? '').split(/\s*(?:-|–|—|to)\s*/i);
-      experience.push({ id: experience.length + 1, role: jobRole, company, location: '', start, end, bullets: [] });
+      experience.push({ id: experience.length + 1, role: jobRole, company, location: jobLocation, start, end, bullets: [] });
     } else if (date && experience.length) {
       const [start = '', end = ''] = date.split(/\s*(?:-|–|—|to)\s*/i);
       experience.at(-1).start = start;
