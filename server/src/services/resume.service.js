@@ -20,6 +20,11 @@ const SECTION_ALIASES = {
   skills: ['skills', 'technical skills', 'core competencies']
 };
 
+const GENERIC_SECTION_NAMES = new Set([
+  ...Object.values(SECTION_ALIASES).flat(), 'awards', 'achievements', 'languages',
+  'volunteer experience', 'volunteering', 'publications', 'interests', 'activities'
+]);
+
 function normalize(value) {
   return value.toLowerCase().replace(/\s+/g, ' ').trim();
 }
@@ -166,6 +171,24 @@ function nonEmptyLines(value = '') {
   return value.split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !/^--?\s*\d+\s+of\s+\d+(?:\s*--)?$/i.test(line));
 }
 
+function extractDocumentSections(text) {
+  const lines = nonEmptyLines(text);
+  const sections = [];
+  let current = null;
+  for (const line of lines) {
+    const normalized = normalize(line).replace(/:$/, '');
+    const looksLikeHeading = GENERIC_SECTION_NAMES.has(normalized)
+      || (/^[A-Z][A-Z &/+-]{2,40}:?$/.test(line) && !line.includes('@'));
+    if (looksLikeHeading) {
+      current = { id: `imported-${sections.length + 1}`, title: line.replace(/:$/, '').trim(), content: '' };
+      sections.push(current);
+    } else if (current) {
+      current.content += `${current.content ? '\n' : ''}${line}`;
+    }
+  }
+  return sections.filter((section) => section.content);
+}
+
 export function buildEditorResume(resume) {
   const allLines = nonEmptyLines(resume.text);
   const headingNames = Object.values(SECTION_ALIASES).flat();
@@ -174,6 +197,10 @@ export function buildEditorResume(resume) {
   const email = resume.text.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0] ?? '';
   const phone = resume.text.match(/(?:\+?\d[\d\s().-]{7,}\d)/)?.[0]?.trim() ?? '';
   const linkedin = resume.text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s|,]+/i)?.[0] ?? '';
+  const github = resume.text.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/[^\s|,]+/i)?.[0] ?? '';
+  const urls = [...resume.text.matchAll(/(?:https?:\/\/|www\.)[^\s|,]+|(?<!@)\b[a-z0-9-]+\.(?:com|net|org|io|me|co|ai|app|dev|design|tech|site)(?:\/[^\s|,]*)?/gi)]
+    .map((match) => match[0].replace(/[.;)]+$/, ''));
+  const website = urls.find((url) => !/linkedin\.com|github\.com/i.test(url)) ?? '';
   const name = headerLines.find((line) => !line.includes('@') && !/\d{3}/.test(line) && line.length <= 60) ?? '';
   const role = headerLines.find((line) => line !== name && !line.includes('@') && !line.includes('linkedin') && !/\d{3}/.test(line) && line.length <= 80) ?? '';
   const contactLine = allLines.find((line) => line.includes(email) && email) ?? '';
@@ -237,12 +264,13 @@ export function buildEditorResume(resume) {
     }
   }
   return {
-    name, role, email, phone, location, linkedin,
+    name, role, email, phone, location, linkedin, github, website,
     summary: resume.sections.summary,
     skills: resume.sections.skills || resume.skills.join(', '),
     experience,
     education,
     sectionOrder: ['summary', 'experience', 'skills', 'education'],
+    importedSections: extractDocumentSections(resume.text),
     imported: true
   };
 }
