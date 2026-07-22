@@ -10,9 +10,9 @@ const initialResume = {
 };
 
 const layoutPresets = {
-  compact: { size: 9.5, spacing: 1.12, margin: 30, sectionGap: 14, itemGap: 5, bulletIndent: 9 },
-  professional: { size: 10, spacing: 1.2, margin: 36, sectionGap: 20, itemGap: 8, bulletIndent: 10 },
-  spacious: { size: 11, spacing: 1.4, margin: 48, sectionGap: 26, itemGap: 12, bulletIndent: 14 }
+  compact: { size: 9.5, spacing: 1.12, margin: 30, sectionGap: 14, itemGap: 5, bulletIndent: 6 },
+  professional: { size: 10, spacing: 1.2, margin: 36, sectionGap: 20, itemGap: 8, bulletIndent: 6 },
+  spacious: { size: 11, spacing: 1.4, margin: 48, sectionGap: 26, itemGap: 12, bulletIndent: 10 }
 };
 const initialStyle = { font: 'Arial', accent: '#000000', template: 'classic', pageSize: 'letter', preset: 'professional', ...layoutPresets.professional };
 const makeId = () => Date.now() + Math.random();
@@ -193,6 +193,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       const pageHeight = pdf.internal.pageSize.getHeight();
       const width = pageWidth - margin * 2;
       let y = margin;
+      const ensureSpace = (points) => { if (y + points > pageHeight - margin) { pdf.addPage(); y = margin; } };
       const text = (value, size = style.size, weight = 'normal', gap = 5, color = '#334155', indent = 0) => {
         if (!value) return;
         pdf.setFont('helvetica', weight); pdf.setFontSize(size); pdf.setTextColor(color);
@@ -200,7 +201,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         lines.forEach((line) => { if (y > pageHeight - margin) { pdf.addPage(); y = margin; } pdf.text(line, margin + indent, y); y += size * style.spacing; }); y += gap;
       };
       const heading = (value) => {
-        if (y > pageHeight - margin - 24) { pdf.addPage(); y = margin; }
+        ensureSpace(42);
         y += Math.max(6, style.sectionGap - 12);
         pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10); pdf.setTextColor(style.accent);
         const label = value.toUpperCase();
@@ -208,6 +209,37 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         pdf.setDrawColor(style.accent); pdf.setLineWidth(0.5);
         pdf.line(margin, y + 3, margin + width, y + 3);
         y += 16;
+      };
+      const twoColumnText = (left, right, size = style.size, weight = 'bold', gap = 2) => {
+        if (!left && !right) return;
+        ensureSpace(size * style.spacing + gap);
+        pdf.setFont('helvetica', weight); pdf.setFontSize(size); pdf.setTextColor('#0f172a');
+        const rightWidth = right ? pdf.getTextWidth(right) + 12 : 0;
+        const leftLines = pdf.splitTextToSize(String(left || ''), Math.max(120, width - rightWidth));
+        leftLines.forEach((line, index) => {
+          ensureSpace(size * style.spacing);
+          pdf.text(line, margin, y);
+          if (index === 0 && right) pdf.text(right, margin + width, y, { align: 'right' });
+          y += size * style.spacing;
+        });
+        y += gap;
+      };
+      const labeledText = (label, value) => {
+        if (!label) { text(value, style.size, 'normal', 1); return; }
+        ensureSpace(style.size * style.spacing * 2);
+        pdf.setFontSize(style.size); pdf.setTextColor('#334155');
+        pdf.setFont('helvetica', 'bold');
+        const prefix = `${label}: `;
+        const prefixWidth = pdf.getTextWidth(prefix);
+        pdf.text(prefix, margin, y);
+        pdf.setFont('helvetica', 'normal');
+        const lines = pdf.splitTextToSize(String(value), width - prefixWidth);
+        lines.forEach((line, index) => {
+          ensureSpace(style.size * style.spacing);
+          pdf.text(line, index === 0 ? margin + prefixWidth : margin, y);
+          y += style.size * style.spacing;
+        });
+        y += 1;
       };
       const centeredText = (value, size, weight = 'normal', gap = 4, color = '#000000') => {
         if (!value) return;
@@ -221,9 +253,9 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       centeredText([resume.location, resume.phone, resume.email, resume.linkedin].filter(Boolean).join('  •  '), 9, 'normal', 8, '#334155');
       const pdfSections = {
         summary: () => { heading('Professional summary'); text(resume.summary); },
-        experience: () => { heading('Experience'); resume.experience.forEach((item) => { text([item.role, item.company].filter(Boolean).join(' — '), 11, 'bold', 1, '#0f172a'); text([item.location, [item.start, item.end].filter(Boolean).join(' – ')].filter(Boolean).join('  |  '), 9, 'normal', 2); item.bullets.filter(Boolean).forEach((bullet) => text(`• ${bullet}`, style.size, 'normal', 1, '#334155', style.bulletIndent)); y += style.itemGap; }); },
-        skills: () => { heading('Skills'); parseSkillRows(resume.skills).forEach((row) => text(`${row.category}${row.category ? ': ' : ''}${row.skills}`, style.size, row.category ? 'bold' : 'normal', 1)); },
-        education: () => { heading('Education'); resume.education.forEach((item) => text([item.degree, item.school, item.year].filter(Boolean).join(' — '), style.size, 'bold', 3)); }
+        experience: () => { heading('Experience'); resume.experience.forEach((item) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); ensureSpace(44); twoColumnText([item.role, item.company].filter(Boolean).join(' — '), dates, 11, 'bold', 1); text(item.location, 9, 'normal', 2); item.bullets.filter(Boolean).forEach((bullet) => text(`• ${bullet}`, style.size, 'normal', 1, '#334155', style.bulletIndent)); y += style.itemGap; }); },
+        skills: () => { heading('Skills'); parseSkillRows(resume.skills).forEach((row) => labeledText(row.category, row.skills)); },
+        education: () => { heading('Education'); resume.education.forEach((item) => twoColumnText([item.degree, item.school].filter(Boolean).join(' — '), item.year, style.size, 'bold', Math.max(3, style.itemGap / 2))); }
       };
       (resume.sectionOrder || initialResume.sectionOrder).forEach((section) => pdfSections[section]?.());
       pdf.save(`${(resume.name || 'resume').trim().replace(/\s+/g, '-').toLowerCase()}.pdf`);
