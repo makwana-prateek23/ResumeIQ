@@ -13,6 +13,22 @@ const initialStyle = { font: 'Arial', size: 10.5, spacing: 1.45, accent: '#00000
 const makeId = () => Date.now() + Math.random();
 const pageMarker = /^--?\s*\d+\s+of\s+\d+(?:\s*--)?$/i;
 
+function parseSkillRows(value = '') {
+  return String(value)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^([^:]{2,60}):\s*(.+)$/);
+      return match ? { category: match[1].trim(), skills: match[2].trim() } : { category: '', skills: line };
+    });
+}
+
+function SkillsContent({ value, fallback = '' }) {
+  const rows = parseSkillRows(value || fallback);
+  return <div className="space-y-0.5 break-words">{rows.map((row, index) => <p key={`${row.category}-${index}`}><strong className="font-bold text-slate-950">{row.category}{row.category ? ': ' : ''}</strong>{row.skills}</p>)}</div>;
+}
+
 function cleanImportedResume(data) {
   const legacyImported = (data?.experience || []).some((item) => (!item.role || /^role title$/i.test(item.role)) && (item.start || item.end || item.bullets?.some(Boolean)))
     || (data?.education || []).some((item) => [item.degree, item.school, item.year].some((value) => pageMarker.test(String(value || '').trim())));
@@ -83,7 +99,7 @@ function PreviewSectionContent({ section, resume, color }) {
   const placeholder = (value, fallback) => value || (resume.imported ? '' : fallback);
   if (section === 'summary') return <ResumeSection title="Professional Summary" color={color}><p className="break-words">{placeholder(resume.summary, 'Write a focused 2–4 line summary that highlights your experience, specialization, and strongest result.')}</p></ResumeSection>;
   if (section === 'experience') return <ResumeSection title="Experience" color={color}>{resume.experience.map((item) => <div key={item.id} className="mb-4 break-inside-avoid"><div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-bold text-slate-950"><span>{placeholder(item.role, 'ROLE TITLE')}{item.company ? ` · ${item.company}` : resume.imported ? '' : ' · COMPANY'}</span>{(item.start || item.end || !resume.imported) && <span className="whitespace-nowrap">{placeholder(item.start, 'START')} – {placeholder(item.end, 'END')}</span>}</div>{item.bullets.length > 0 && <ul className="mt-1 list-disc space-y-0.5 pl-5">{item.bullets.map((bullet, index) => <li key={index} className="break-words">{placeholder(bullet, 'Describe what you achieved, how you did it, and the measurable result.')}</li>)}</ul>}</div>)}</ResumeSection>;
-  if (section === 'skills') return <ResumeSection title="Skills" color={color}><p className="break-words">{placeholder(resume.skills, 'Add relevant skills separated by commas.')}</p></ResumeSection>;
+  if (section === 'skills') return <ResumeSection title="Skills" color={color}><SkillsContent value={resume.skills} fallback={resume.imported ? '' : 'Add relevant skills separated by commas.'} /></ResumeSection>;
   if (section === 'education') return <ResumeSection title="Education" color={color}>{resume.education.map((item) => <div key={item.id} className="mb-1 flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5 font-bold"><span className="min-w-0 flex-1 break-words">{placeholder(item.degree, 'DEGREE')}{item.school ? ` · ${item.school}` : resume.imported ? '' : ' · INSTITUTION'}</span><span className="whitespace-nowrap">{placeholder(item.year, 'YEAR')}</span></div>)}</ResumeSection>;
   return null;
 }
@@ -172,7 +188,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       const pdfSections = {
         summary: () => { heading('Professional summary'); text(resume.summary); },
         experience: () => { heading('Experience'); resume.experience.forEach((item) => { text([item.role, item.company].filter(Boolean).join(' — '), 11, 'bold', 1, '#0f172a'); text([item.location, [item.start, item.end].filter(Boolean).join(' – ')].filter(Boolean).join('  |  '), 9, 'normal', 2); item.bullets.filter(Boolean).forEach((bullet) => text(`• ${bullet}`, style.size, 'normal', 1)); }); },
-        skills: () => { heading('Skills'); text(resume.skills); },
+        skills: () => { heading('Skills'); parseSkillRows(resume.skills).forEach((row) => text(`${row.category}${row.category ? ': ' : ''}${row.skills}`, style.size, row.category ? 'bold' : 'normal', 1)); },
         education: () => { heading('Education'); resume.education.forEach((item) => text([item.degree, item.school, item.year].filter(Boolean).join(' — '), style.size, 'bold', 3)); }
       };
       (resume.sectionOrder || initialResume.sectionOrder).forEach((section) => pdfSections[section]?.());
@@ -211,7 +227,17 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
             item.bullets.filter(Boolean).forEach((bullet) => children.push(paragraph(bullet, { bullet: true, after: 20 })));
           });
         },
-        skills: () => { if (!resume.skills) return; sectionHeading('Skills'); children.push(paragraph(resume.skills)); },
+        skills: () => {
+          if (!resume.skills) return;
+          sectionHeading('Skills');
+          parseSkillRows(resume.skills).forEach((row) => children.push(new Paragraph({
+            spacing: { after: 30, line: Math.round(style.spacing * 240) },
+            children: [
+              ...(row.category ? [new TextRun({ text: `${row.category}: `, bold: true, size: bodySize, color: '000000', font: style.font })] : []),
+              new TextRun({ text: row.skills, size: bodySize, color: '000000', font: style.font })
+            ]
+          })));
+        },
         education: () => {
           if (!resume.education.length) return;
           sectionHeading('Education');
@@ -244,7 +270,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         <Block number="2" title="Contact information" hint="Keep it short and professional."><div className="grid gap-3 sm:grid-cols-2"><Field label="Email" type="email" value={resume.email} onChange={(e) => update('email', e.target.value)} placeholder="jordan@email.com" /><Field label="Phone" value={resume.phone} onChange={(e) => update('phone', e.target.value)} placeholder="(555) 000-0000" /><Field label="City, State" value={resume.location} onChange={(e) => update('location', e.target.value)} placeholder="Austin, TX" /><Field label="LinkedIn or portfolio" value={resume.linkedin} onChange={(e) => update('linkedin', e.target.value)} placeholder="linkedin.com/in/jordan" /></div></Block>
         <Block number="3" title="Professional summary" hint="Write 2–4 lines: experience, specialty, and strongest result."><textarea rows="5" value={resume.summary} maxLength="600" onChange={(e) => update('summary', e.target.value)} placeholder="Example: Product designer with 5 years of experience creating accessible B2B products..." className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-6 outline-none focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100" /><p className="mt-2 text-right text-xs text-slate-400">{resume.summary.length}/600</p></Block>
         <Block number="4" title="Experience and bullet points" hint="Start bullets with an action and finish with a measurable result."><div className="grid gap-4">{resume.experience.map((item, itemIndex) => <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-sm font-extrabold">Experience {itemIndex + 1}</p>{resume.experience.length > 1 && <button type="button" onClick={() => setResume((current) => ({ ...current, experience: current.experience.filter((entry) => entry.id !== item.id) }))} className="text-xs font-bold text-rose-600">Remove</button>}</div><div className="grid gap-3 sm:grid-cols-2"><Field label="Role" value={item.role} onChange={(e) => updateExperience(item.id, 'role', e.target.value)} placeholder="Senior Designer" /><Field label="Company" value={item.company} onChange={(e) => updateExperience(item.id, 'company', e.target.value)} placeholder="Company name" /><Field label="Start" value={item.start} onChange={(e) => updateExperience(item.id, 'start', e.target.value)} placeholder="Jan 2022" /><Field label="End" value={item.end} onChange={(e) => updateExperience(item.id, 'end', e.target.value)} placeholder="Present" /></div><div className="mt-3 grid gap-2">{item.bullets.map((bullet, bulletIndex) => <div key={bulletIndex} className="flex gap-2"><span className="mt-3 text-indigo-500">•</span><input value={bullet} onChange={(e) => updateBullet(item.id, bulletIndex, e.target.value)} placeholder="Improved [metric] by [number] through [action]" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100" />{item.bullets.length > 1 && <button aria-label="Remove bullet" type="button" onClick={() => updateExperience(item.id, 'bullets', item.bullets.filter((_, index) => index !== bulletIndex))} className="px-2 text-rose-500">×</button>}</div>)}</div><button type="button" onClick={() => updateExperience(item.id, 'bullets', [...item.bullets, ''])} className="mt-3 text-xs font-bold text-indigo-600">+ Add bullet point</button></div>)}</div><button type="button" onClick={() => setResume((current) => ({ ...current, experience: [...current.experience, { id: makeId(), role: '', company: '', location: '', start: '', end: '', bullets: [''] }] }))} className="mt-4 w-full rounded-xl border border-dashed border-indigo-300 py-3 text-sm font-bold text-indigo-600 hover:bg-indigo-50">+ Add another experience</button></Block>
-        <Block number="5" title="Skills" hint="Separate specific, job-relevant skills with commas."><textarea rows="3" value={resume.skills} onChange={(e) => update('skills', e.target.value)} placeholder="Product strategy, Figma, user research, prototyping" className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-6 outline-none focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100" /></Block>
+        <Block number="5" title="Skills" hint="Use one category per line so recruiters can scan your strengths quickly."><textarea rows="7" value={resume.skills} onChange={(e) => update('skills', e.target.value)} placeholder={'Design: Figma, prototyping, design systems\nResearch: User interviews, usability testing\nTools: Jira, Miro, Adobe Creative Suite'} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-6 outline-none focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100" /><p className="mt-2 text-xs leading-5 text-slate-500"><span className="font-bold text-slate-700">Recommended format:</span> Category: skill, skill, skill. Put each category on a new line and prioritize the categories most relevant to the job.</p></Block>
         <Block number="6" title="Education" hint="Include your degree, institution, and graduation year.">{resume.education.map((item, index) => <div key={item.id} className="mb-3 grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-3"><Field label={`Degree ${index + 1}`} value={item.degree} onChange={(e) => updateEducation(item.id, 'degree', e.target.value)} placeholder="B.S. Design" /><Field label="School" value={item.school} onChange={(e) => updateEducation(item.id, 'school', e.target.value)} placeholder="State University" /><Field label="Year" value={item.year} onChange={(e) => updateEducation(item.id, 'year', e.target.value)} placeholder="2022" /></div>)}<button type="button" onClick={() => setResume((current) => ({ ...current, education: [...current.education, { id: makeId(), degree: '', school: '', year: '' }] }))} className="text-xs font-bold text-indigo-600">+ Add education</button></Block>
       </div>
 
