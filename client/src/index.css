@@ -17,6 +17,23 @@ button, input, textarea { font: inherit; }
 ::selection { background: #c7d2fe; color: #1e1b4b; }
 html { scroll-behavior: smooth; }
 
+/* Resume rows reserve a fixed right column for dates, even when titles wrap. */
+article.shadow-2xl .flex.flex-wrap.justify-between {
+  flex-wrap: nowrap;
+  align-items: baseline;
+}
+
+article.shadow-2xl .flex.flex-wrap.justify-between > span:first-child {
+  min-width: 0;
+}
+
+article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
+  flex: 0 0 auto;
+  margin-left: 12px;
+  white-space: nowrap;
+  text-align: right;
+}
+
 @media print {
   body { background: white; }
   body * { visibility: hidden; }
