@@ -176,7 +176,11 @@ function nonEmptyLines(value = '') {
 }
 
 function extractDocumentSections(text) {
-  const lines = nonEmptyLines(text);
+  // Preserve indentation from the source document. PDF/DOCX extraction often
+  // uses it to keep dates, employers, and bullet text visually associated.
+  const lines = text.split(/\r?\n/)
+    .map((line) => line.replace(/\s+$/, ''))
+    .filter((line) => line.trim() && !/^--?\s*\d+\s+of\s+\d+(?:\s*--)?$/i.test(line.trim()));
   const sections = [];
   let current = null;
   for (const line of lines) {
@@ -184,7 +188,7 @@ function extractDocumentSections(text) {
     const looksLikeHeading = GENERIC_SECTION_NAMES.has(normalized)
       || (/^[A-Z][A-Z &/+-]{2,40}:?$/.test(line) && !line.includes('@'));
     if (looksLikeHeading) {
-      current = { id: `imported-${sections.length + 1}`, title: line.replace(/:$/, '').trim(), content: '' };
+      current = { id: `imported-${sections.length + 1}`, title: line.trim().replace(/:$/, '').trim(), content: '' };
       sections.push(current);
     } else if (current) {
       current.content += `${current.content ? '\n' : ''}${line}`;

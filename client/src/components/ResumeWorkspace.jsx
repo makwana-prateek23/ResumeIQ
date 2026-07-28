@@ -133,7 +133,7 @@ function PreviewSectionContent({ section, resume, color, style: selectedStyle })
 }
 
 function ImportedSection({ section, color, gap }) {
-  return <ResumeSection title={section.title} color={color} gap={gap}><div className="whitespace-pre-line break-words">{section.content}</div></ResumeSection>;
+  return <ResumeSection title={section.title} color={color} gap={gap}><div className="whitespace-pre-wrap break-words [tab-size:4]">{section.content}</div></ResumeSection>;
 }
 
 function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
@@ -323,7 +323,11 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         skills: () => { heading('Skills'); parseSkillRows(resume.skills).forEach((row) => labeledText(row.category, row.skills)); },
         education: () => { heading('Education'); resume.education.forEach((item) => twoColumnText([item.degree, item.school].filter(Boolean).join(' — '), item.year, style.size, 'bold', Math.max(3, style.itemGap / 2))); }
       };
-      if (resume.importedSections?.length) resume.importedSections.forEach((section) => { heading(section.title); text(section.content, style.size, 'normal', 5); });
+      if (resume.importedSections?.length) resume.importedSections.forEach((section) => {
+        heading(section.title);
+        String(section.content).split(/\r?\n/).forEach((line) => text(line || ' ', style.size, 'normal', 1));
+        y += 4;
+      });
       else (resume.sectionOrder || initialResume.sectionOrder).forEach((section) => pdfSections[section]?.());
       pdf.save(`${(resume.name || 'resume').trim().replace(/\s+/g, '-').toLowerCase()}.pdf`);
     } finally { setDownloading(false); }
@@ -355,7 +359,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         ...(index ? [new TextRun({ text: '  •  ', size: 18, font: style.font })] : []),
         item.url ? new ExternalHyperlink({ link: item.url, children: [new TextRun({ text: item.value, size: 18, font: style.font, color: '0563C1', underline: {} })] }) : new TextRun({ text: item.value, size: 18, font: style.font })
       ]) }));
-      const sectionHeading = (title) => children.push(paragraph(title.toUpperCase(), { heading: true, bold: true, size: 20, after: 80 }));
+      const sectionHeading = (title, preserveCase = false) => children.push(paragraph(preserveCase ? title : title.toUpperCase(), { heading: true, bold: true, size: 20, after: 80 }));
       const wordSections = {
         summary: () => { if (!resume.summary) return; sectionHeading('Professional Summary'); children.push(paragraph(resume.summary, { justify: true })); },
         experience: () => {
@@ -388,7 +392,10 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
           });
         }
       };
-      if (resume.importedSections?.length) resume.importedSections.forEach((section) => { sectionHeading(section.title); children.push(paragraph(section.content)); });
+      if (resume.importedSections?.length) resume.importedSections.forEach((section) => {
+        sectionHeading(section.title, true);
+        String(section.content).split(/\r?\n/).forEach((line) => children.push(paragraph(line, { after: 20 })));
+      });
       else (resume.sectionOrder || initialResume.sectionOrder).forEach((section) => wordSections[section]?.());
       const wordMargin = Math.round(style.margin * 20);
       const wordDocument = new Document({ sections: [{ properties: { page: { size: style.pageSize === 'a4' ? { width: 11906, height: 16838 } : { width: 12240, height: 15840 }, margin: { top: wordMargin, right: wordMargin, bottom: wordMargin, left: wordMargin } } }, children }] });

@@ -55,3 +55,22 @@ Figma, research, prototyping`;
   assert.equal(editor.importedSections.find(({ title }) => title === 'Awards').content, '2025 Product Design Award');
   assert.equal(editor.importedSections.find(({ title }) => title === 'Languages').content, 'English, Spanish');
 });
+
+test('preserves imported line indentation and keyword order', () => {
+  const editor = buildEditorResume(parseResume(`Alex Morgan
+Technical Skills
+Languages: JavaScript, TypeScript
+    Frameworks: React, Express
+Experience
+Developer at Example Corp
+  - Built accessible React applications`));
+
+  assert.equal(
+    editor.importedSections.find(({ title }) => title === 'Technical Skills').content,
+    'Languages: JavaScript, TypeScript\n    Frameworks: React, Express'
+  );
+  assert.match(
+    editor.importedSections.find(({ title }) => title === 'Experience').content,
+    /\n  - Built accessible React applications$/
+  );
+});
