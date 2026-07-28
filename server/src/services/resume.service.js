@@ -12,17 +12,19 @@ const SKILLS = [
 ];
 
 const SECTION_ALIASES = {
-  summary: ['summary', 'professional summary', 'profile', 'professional profile', 'career summary'],
-  experience: ['experience', 'work experience', 'employment', 'professional experience'],
+  summary: ['summary', 'professional summary', 'profile', 'professional profile', 'career summary', 'career objective', 'objective', 'about me'],
+  experience: ['experience', 'work experience', 'employment', 'professional experience', 'employment history', 'work history', 'relevant experience', 'internship experience'],
   projects: ['projects', 'personal projects', 'selected projects'],
-  education: ['education', 'academic background'],
-  certifications: ['certifications', 'certificates', 'licenses'],
-  skills: ['skills', 'technical skills', 'core competencies']
+  education: ['education', 'academic background', 'academic qualifications', 'educational qualifications'],
+  certifications: ['certifications', 'certificates', 'licenses', 'licenses & certifications', 'training'],
+  skills: ['skills', 'technical skills', 'core competencies', 'technical expertise', 'technologies', 'areas of expertise']
 };
 
 const GENERIC_SECTION_NAMES = new Set([
   ...Object.values(SECTION_ALIASES).flat(), 'awards', 'achievements', 'languages',
-  'volunteer experience', 'volunteering', 'publications', 'interests', 'activities'
+  'volunteer experience', 'volunteering', 'publications', 'interests', 'activities',
+  'accomplishments', 'honors', 'professional affiliations', 'memberships', 'references',
+  'additional information', 'personal details'
 ]);
 
 function normalize(value) {
@@ -41,13 +43,15 @@ export function extractSkills(text) {
 
 function extractSection(text, aliases) {
   const lines = text.split(/\r?\n/);
-  const headings = Object.values(SECTION_ALIASES).flat();
   const start = lines.findIndex((line) => aliases.includes(normalize(line).replace(/:$/, '')));
   if (start < 0) return '';
   const body = [];
   for (let index = start + 1; index < lines.length; index += 1) {
     const candidate = normalize(lines[index]).replace(/:$/, '');
-    if (headings.includes(candidate)) break;
+    // Stop at every known resume heading, including custom sections such as
+    // Awards and Languages. Otherwise their content is incorrectly appended to
+    // the preceding standard section.
+    if (GENERIC_SECTION_NAMES.has(candidate)) break;
     body.push(lines[index]);
   }
   return body.join('\n').trim();
@@ -191,8 +195,7 @@ function extractDocumentSections(text) {
 
 export function buildEditorResume(resume) {
   const allLines = nonEmptyLines(resume.text);
-  const headingNames = Object.values(SECTION_ALIASES).flat();
-  const firstHeadingIndex = allLines.findIndex((line) => headingNames.includes(normalize(line).replace(/:$/, '')));
+  const firstHeadingIndex = allLines.findIndex((line) => GENERIC_SECTION_NAMES.has(normalize(line).replace(/:$/, '')));
   const headerLines = allLines.slice(0, firstHeadingIndex < 0 ? 8 : firstHeadingIndex);
   const email = resume.text.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0] ?? '';
   const phone = resume.text.match(/(?:\+?\d[\d\s().-]{7,}\d)/)?.[0]?.trim() ?? '';
