@@ -313,7 +313,8 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       centeredText(resume.role || (resume.imported ? '' : 'TARGET ROLE'), 12, 'bold', 3, '#000000');
       centeredContact([
         { value: resume.location }, { value: resume.phone }, { value: resume.email, url: linkTarget(resume.email, 'email') },
-        { value: resume.linkedin, url: linkTarget(resume.linkedin) }, { value: resume.github, url: linkTarget(resume.github) },
+        { value: resume.linkedin ? 'LinkedIn' : '', url: linkTarget(resume.linkedin) },
+        { value: resume.github ? 'GitHub' : '', url: linkTarget(resume.github) },
         { value: resume.website, url: linkTarget(resume.website) }
       ]);
       const pdfSections = {
@@ -346,7 +347,8 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       if (resume.role) children.push(paragraph(resume.role, { center: true, bold: true, size: 22, after: 30 }));
       const wordContacts = [
         { value: resume.location }, { value: resume.phone }, { value: resume.email, url: linkTarget(resume.email, 'email') },
-        { value: resume.linkedin, url: linkTarget(resume.linkedin) }, { value: resume.github, url: linkTarget(resume.github) },
+        { value: resume.linkedin ? 'LinkedIn' : '', url: linkTarget(resume.linkedin) },
+        { value: resume.github ? 'GitHub' : '', url: linkTarget(resume.github) },
         { value: resume.website, url: linkTarget(resume.website) }
       ].filter((item) => item.value);
       if (wordContacts.length) children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: wordContacts.flatMap((item, index) => [
@@ -404,7 +406,8 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
 
   const contactItems = [
     { value: resume.location }, { value: resume.phone }, { value: resume.email, href: linkTarget(resume.email, 'email') },
-    { value: resume.linkedin, href: linkTarget(resume.linkedin) }, { value: resume.github, href: linkTarget(resume.github) },
+    { value: resume.linkedin ? 'LinkedIn' : '', href: linkTarget(resume.linkedin) },
+    { value: resume.github ? 'GitHub' : '', href: linkTarget(resume.github) },
     { value: resume.website, href: linkTarget(resume.website) }
   ].filter((item) => item.value);
   return <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-7">
