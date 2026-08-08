@@ -12,17 +12,19 @@ const SKILLS = [
 ];
 
 const SECTION_ALIASES = {
-  summary: ['summary', 'professional summary', 'profile', 'professional profile', 'career summary', 'career objective', 'objective'],
-  experience: ['experience', 'work experience', 'employment', 'professional experience', 'work history', 'employment history', 'career history', 'relevant experience'],
+  summary: ['summary', 'professional summary', 'profile', 'professional profile', 'career summary', 'career objective', 'objective', 'about me'],
+  experience: ['experience', 'work experience', 'employment', 'professional experience', 'work history', 'employment history', 'career history', 'relevant experience', 'internship experience'],
   projects: ['projects', 'personal projects', 'selected projects', 'key projects'],
-  education: ['education', 'academic background', 'academic qualifications'],
-  certifications: ['certifications', 'certificates', 'licenses', 'licenses & certifications'],
-  skills: ['skills', 'technical skills', 'core competencies', 'key skills', 'core skills', 'areas of expertise', 'technical proficiencies', 'technologies']
+  education: ['education', 'academic background', 'academic qualifications', 'educational qualifications'],
+  certifications: ['certifications', 'certificates', 'licenses', 'licenses & certifications', 'training'],
+  skills: ['skills', 'technical skills', 'core competencies', 'key skills', 'core skills', 'areas of expertise', 'technical proficiencies', 'technologies', 'technical expertise']
 };
 
 const GENERIC_SECTION_NAMES = new Set([
   ...Object.values(SECTION_ALIASES).flat(), 'awards', 'achievements', 'languages',
-  'volunteer experience', 'volunteering', 'publications', 'interests', 'activities'
+  'volunteer experience', 'volunteering', 'publications', 'interests', 'activities',
+  'accomplishments', 'honors', 'professional affiliations', 'memberships', 'references',
+  'additional information', 'personal details'
 ]);
 
 function normalize(value) {
@@ -176,7 +178,11 @@ function nonEmptyLines(value = '') {
 }
 
 function extractDocumentSections(text) {
-  const lines = nonEmptyLines(text);
+  // Preserve indentation from the source document. PDF/DOCX extraction often
+  // uses it to keep dates, employers, and bullet text visually associated.
+  const lines = text.split(/\r?\n/)
+    .map((line) => line.replace(/\s+$/, ''))
+    .filter((line) => line.trim() && !/^--?\s*\d+\s+of\s+\d+(?:\s*--)?$/i.test(line.trim()));
   const sections = [];
   let current = null;
   for (const line of lines) {
@@ -192,8 +198,7 @@ function extractDocumentSections(text) {
 
 export function buildEditorResume(resume) {
   const allLines = nonEmptyLines(resume.text);
-  const headingNames = Object.values(SECTION_ALIASES).flat();
-  const firstHeadingIndex = allLines.findIndex((line) => headingNames.includes(normalize(line).replace(/:$/, '')));
+  const firstHeadingIndex = allLines.findIndex((line) => GENERIC_SECTION_NAMES.has(normalize(line).replace(/:$/, '')));
   const headerLines = allLines.slice(0, firstHeadingIndex < 0 ? 8 : firstHeadingIndex);
   const email = resume.text.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0] ?? '';
   const phone = resume.text.match(/(?:\+?\d[\d\s().-]{7,}\d)/)?.[0]?.trim() ?? '';

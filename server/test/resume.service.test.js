@@ -25,3 +25,52 @@ Cloud Certification — 2025`;
     { title: 'CERTIFICATIONS', content: 'Cloud Certification — 2025' }
   ]);
 });
+
+test('keeps mixed-case custom sections out of the preceding standard section', () => {
+  const text = `Jordan Lee
+Product Designer
+New York, NY | jordan@example.com
+Professional Summary
+Designs accessible enterprise products.
+Work Experience
+Senior Product Designer at Acme
+Jan 2022 - Present
+- Led the design system.
+Awards
+2025 Product Design Award
+Languages
+English, Spanish
+Technical Skills
+Figma, research, prototyping`;
+
+  const parsed = parseResume(text);
+  const editor = buildEditorResume(parsed);
+
+  assert.doesNotMatch(parsed.sections.experience, /Product Design Award|English, Spanish|Figma/);
+  assert.equal(editor.name, 'Jordan Lee');
+  assert.equal(editor.role, 'Product Designer');
+  assert.deepEqual(editor.importedSections.map(({ title }) => title), [
+    'Professional Summary', 'Work Experience', 'Awards', 'Languages', 'Technical Skills'
+  ]);
+  assert.equal(editor.importedSections.find(({ title }) => title === 'Awards').content, '2025 Product Design Award');
+  assert.equal(editor.importedSections.find(({ title }) => title === 'Languages').content, 'English, Spanish');
+});
+
+test('preserves imported line indentation and keyword order', () => {
+  const editor = buildEditorResume(parseResume(`Alex Morgan
+Technical Skills
+Languages: JavaScript, TypeScript
+    Frameworks: React, Express
+Experience
+Developer at Example Corp
+  - Built accessible React applications`));
+
+  assert.equal(
+    editor.importedSections.find(({ title }) => title === 'Technical Skills').content,
+    'Languages: JavaScript, TypeScript\n    Frameworks: React, Express'
+  );
+  assert.match(
+    editor.importedSections.find(({ title }) => title === 'Experience').content,
+    /\n  - Built accessible React applications$/
+  );
+});
