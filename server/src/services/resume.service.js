@@ -12,12 +12,12 @@ const SKILLS = [
 ];
 
 const SECTION_ALIASES = {
-  summary: ['summary', 'professional summary', 'profile', 'professional profile', 'career summary'],
-  experience: ['experience', 'work experience', 'employment', 'professional experience'],
-  projects: ['projects', 'personal projects', 'selected projects'],
-  education: ['education', 'academic background'],
-  certifications: ['certifications', 'certificates', 'licenses'],
-  skills: ['skills', 'technical skills', 'core competencies']
+  summary: ['summary', 'professional summary', 'profile', 'professional profile', 'career summary', 'career objective', 'objective'],
+  experience: ['experience', 'work experience', 'employment', 'professional experience', 'work history', 'employment history', 'career history', 'relevant experience'],
+  projects: ['projects', 'personal projects', 'selected projects', 'key projects'],
+  education: ['education', 'academic background', 'academic qualifications'],
+  certifications: ['certifications', 'certificates', 'licenses', 'licenses & certifications'],
+  skills: ['skills', 'technical skills', 'core competencies', 'key skills', 'core skills', 'areas of expertise', 'technical proficiencies', 'technologies']
 };
 
 const GENERIC_SECTION_NAMES = new Set([
@@ -34,6 +34,12 @@ function containsTerm(text, term) {
   return new RegExp(`(^|[^a-z0-9+#])${escaped}($|[^a-z0-9+#])`, 'i').test(text);
 }
 
+function isHeadingLine(line) {
+  const trimmed = line.trim();
+  const normalized = normalize(trimmed).replace(/:$/, '');
+  return GENERIC_SECTION_NAMES.has(normalized) || (/^[A-Z][A-Z &/+-]{2,40}:?$/.test(trimmed) && !trimmed.includes('@'));
+}
+
 export function extractSkills(text) {
   const normalized = normalize(text);
   return SKILLS.filter((skill) => containsTerm(normalized, skill));
@@ -41,13 +47,11 @@ export function extractSkills(text) {
 
 function extractSection(text, aliases) {
   const lines = text.split(/\r?\n/);
-  const headings = Object.values(SECTION_ALIASES).flat();
   const start = lines.findIndex((line) => aliases.includes(normalize(line).replace(/:$/, '')));
   if (start < 0) return '';
   const body = [];
   for (let index = start + 1; index < lines.length; index += 1) {
-    const candidate = normalize(lines[index]).replace(/:$/, '');
-    if (headings.includes(candidate)) break;
+    if (isHeadingLine(lines[index])) break;
     body.push(lines[index]);
   }
   return body.join('\n').trim();
@@ -176,10 +180,7 @@ function extractDocumentSections(text) {
   const sections = [];
   let current = null;
   for (const line of lines) {
-    const normalized = normalize(line).replace(/:$/, '');
-    const looksLikeHeading = GENERIC_SECTION_NAMES.has(normalized)
-      || (/^[A-Z][A-Z &/+-]{2,40}:?$/.test(line) && !line.includes('@'));
-    if (looksLikeHeading) {
+    if (isHeadingLine(line)) {
       current = { id: `imported-${sections.length + 1}`, title: line.replace(/:$/, '').trim(), content: '' };
       sections.push(current);
     } else if (current) {

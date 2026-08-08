@@ -8,7 +8,7 @@ const links = [
 ];
 
 function AppShell() {
-  const [resumeUploaded, setResumeUploaded] = useState(false);
+  const [resumeUploaded, setResumeUploaded] = useState(() => Boolean(localStorage.getItem('resumeiq-builder-v1')));
   const [editorResumeData, setEditorResumeData] = useState(null);
   const [uploadedResumeFile, setUploadedResumeFile] = useState(null);
   const [uploadMessage, setUploadMessage] = useState('');

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import resumeBlocks from '../assets/resume-blocks.png';
 
 const initialResume = {
@@ -159,6 +159,15 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
   const [downloading, setDownloading] = useState(false);
   const [downloadingWord, setDownloadingWord] = useState(false);
   const [draggedSection, setDraggedSection] = useState(null);
+  const skipAutosaveRef = useRef(false);
+
+  useEffect(() => {
+    if (skipAutosaveRef.current) { skipAutosaveRef.current = false; return; }
+    const timeout = setTimeout(() => {
+      localStorage.setItem(storageKey, JSON.stringify({ resume, style }));
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [resume, style]);
 
   const completion = useMemo(() => {
     const required = [resume.name, resume.role, resume.email, resume.summary, resume.skills, resume.experience[0]?.role, resume.experience[0]?.company, resume.experience[0]?.bullets.some(Boolean), resume.education[0]?.school];
@@ -203,7 +212,13 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
     });
   }
   function saveDraft() { localStorage.setItem(storageKey, JSON.stringify({ resume, style })); setSaved(true); }
-  function resetDraft() { if (window.confirm('Clear every resume field and start again?')) { setResume(initialResume); setStyle(initialStyle); localStorage.removeItem(storageKey); } }
+  function resetDraft() {
+    if (!window.confirm('Clear every resume field and start again?')) return;
+    skipAutosaveRef.current = true;
+    setResume(initialResume);
+    setStyle(initialStyle);
+    localStorage.removeItem(storageKey);
+  }
   function moveSection(target) {
     if (!draggedSection || draggedSection === target) return;
     setResume((current) => {

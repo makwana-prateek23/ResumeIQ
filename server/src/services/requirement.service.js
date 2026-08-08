@@ -6,6 +6,7 @@ const STOP_WORDS = new Set(`
   preference qualification qualifications responsibility responsibilities
   experience experienced knowledge strong excellent demonstrated proven working
   require requires requiring skill skills
+  looking passionate growing thrive thrives loves someone ideal join great
 `.trim().split(/\s+/));
 
 const SOFT_SKILLS = new Set([
@@ -97,6 +98,14 @@ export function normalizeTerm(value) {
   return normalized.replace(/\s+/g, ' ').trim();
 }
 
+// Plain substring search would count "javascript" as evidence for "java" or
+// "postgresql"/"graphql" as evidence for "sql" — count whole-word/phrase hits only.
+function countPhraseOccurrences(normalizedHaystack, phrase) {
+  if (!phrase) return 0;
+  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return normalizedHaystack.match(new RegExp(`(^|[^a-z0-9+#])${escaped}(?=$|[^a-z0-9+#])`, 'gi'))?.length ?? 0;
+}
+
 function priorityFor(context) {
   if (/\b(must|required|mandatory|essential|minimum|need(?:ed)?|shall)\b/i.test(context)) return 'required';
   if (/\b(preferred|desired|nice to have|plus|advantage|ideally)\b/i.test(context)) return 'preferred';
@@ -161,7 +170,7 @@ function addKnownTerms(entries, segments) {
   for (const segment of segments) {
     const normalizedSegment = normalizeTerm(segment);
     for (const [term, aliases, type] of TERM_SPECS) {
-      if (![term, ...aliases].some((variant) => normalizedSegment.includes(normalizeTerm(variant)))) continue;
+      if (![term, ...aliases].some((variant) => countPhraseOccurrences(normalizedSegment, normalizeTerm(variant)) > 0)) continue;
       const existing = entries.get(term);
       const priority = priorityFor(segment);
       entries.set(term, {
@@ -366,7 +375,7 @@ function termTokens(value) {
 function occurrenceCount(text, term, aliases = []) {
   const normalizedText = normalizeTerm(text);
   const variants = [term, ...aliases, ...[...SYNONYMS.entries()].filter(([, canonical]) => canonical === term).map(([variant]) => variant)];
-  return Math.max(...variants.map((variant) => normalizedText.split(variant).length - 1));
+  return Math.max(...variants.map((variant) => countPhraseOccurrences(normalizedText, variant)));
 }
 
 export function matchRequirements(requirements, resume) {
