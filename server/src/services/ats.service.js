@@ -1,4 +1,4 @@
-import { extractJobTitle, extractRequirements, matchRequirements, normalizeTerm } from './requirement.service.js';
+import { degreeLevel, extractJobTitle, extractRequirements, matchRequirements, normalizeTerm } from './requirement.service.js';
 import { buildTailoringPlan } from './tailoring.service.js';
 import { buildDetailedReport } from './report.service.js';
 
@@ -56,15 +56,8 @@ function scoreEducation(requirementMatches, resume) {
   const requirements = requirementMatches.filter((match) => match.type === 'education');
   if (!requirements.length) return null;
   if (!resume.sections.education) return 0;
-  const level = (text) => {
-    if (/\b(ph\.?d|doctorate|doctoral)\b/i.test(text)) return 4;
-    if (/\b(master'?s?|m\.?s\.?|mba)\b/i.test(text)) return 3;
-    if (/\b(bachelor'?s?|b\.?s\.?|b\.?a\.?)\b/i.test(text)) return 2;
-    if (/\b(associate'?s?|diploma)\b/i.test(text)) return 1;
-    return 0;
-  };
-  const requiredLevel = Math.max(...requirements.map((item) => level(`${item.term} ${item.source}`)));
-  const resumeLevel = level(resume.sections.education);
+  const requiredLevel = Math.max(...requirements.map((item) => degreeLevel(`${item.term} ${item.source}`)));
+  const resumeLevel = degreeLevel(resume.sections.education);
   return requiredLevel === 0 ? 100 : clamp((resumeLevel / requiredLevel) * 100);
 }
 

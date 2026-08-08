@@ -93,9 +93,19 @@ export function normalizeTerm(value) {
     .trim();
   for (const [variant, canonical] of SYNONYMS) {
     const escaped = variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    normalized = normalized.replace(new RegExp(`(^|[^a-z0-9+#])${escaped}(?=$|[^a-z0-9+#])`, 'g'), `$1${canonical}`);
+    // Boundary chars must exclude "." — otherwise it's treated as a delimiter
+    // and "js" inside "node.js" gets rewritten into the nonsense "node.javascript".
+    normalized = normalized.replace(new RegExp(`(^|[^a-z0-9+#.])${escaped}(?=$|[^a-z0-9+#.])`, 'g'), `$1${canonical}`);
   }
   return normalized.replace(/\s+/g, ' ').trim();
+}
+
+export function degreeLevel(text) {
+  if (/\b(ph\.?d|doctorate|doctoral)\b/i.test(text)) return 4;
+  if (/\b(master'?s?|m\.?s\.?|mba)\b/i.test(text)) return 3;
+  if (/\b(bachelor'?s?|b\.?s\.?|b\.?a\.?)\b/i.test(text)) return 2;
+  if (/\b(associate'?s?|diploma)\b/i.test(text)) return 1;
+  return 0;
 }
 
 // Plain substring search would count "javascript" as evidence for "java" or
@@ -429,8 +439,10 @@ export function matchRequirements(requirements, resume) {
     }
 
     if (requirement.type === 'education' && resume.sections.education) {
-      const degree = requirement.term.match(/bachelor|master|ph\.?d|doctorate|associate|diploma/i)?.[0];
-      if (!degree || new RegExp(degree, 'i').test(resume.sections.education)) {
+      const requiredLevel = degreeLevel(`${requirement.term} ${requirement.source}`);
+      // A higher degree (e.g. Master's) satisfies a lower requirement (e.g. Bachelor's) —
+      // don't require the exact requested degree word to appear verbatim.
+      if (requiredLevel === 0 || degreeLevel(resume.sections.education) >= requiredLevel) {
         resumeCount = 1;
         status = 'matched';
         matchType = 'educationLevel';
