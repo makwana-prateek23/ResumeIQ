@@ -374,7 +374,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
           x += pdf.getTextWidth(item.value);
           if (index < visible.length - 1) { pdf.text(separator, x, y); x += pdf.getTextWidth(separator); }
         });
-        y += 9 * style.spacing + 8;
+        y += 9 * style.spacing;
       };
       centeredText(resume.name || (resume.imported ? '' : 'YOUR NAME'), 22, 'bold', 2, '#000000');
       centeredText(resume.role || (resume.imported ? '' : 'TARGET ROLE'), 12, 'bold', 3, '#000000');
