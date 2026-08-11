@@ -25,13 +25,16 @@ const layoutPresets = {
 const initialStyle = { font: 'Arial', accent: '#000000', template: 'classic', pageSize: 'letter', preset: 'professional', ...layoutPresets.professional };
 function getLayoutMetrics(style) {
   const page = style.pageSize === 'a4' ? { width: 595.28, height: 841.89 } : { width: 612, height: 792 };
+  const bodySize = Math.min(11, Math.max(9.5, Number(style.size) || 10));
+  const spacing = Math.min(1.22, Math.max(1.08, Number(style.spacing) || 1.15));
   return {
     page,
-    margin: style.margin,
-    bodySize: style.size,
-    lineHeight: style.size * style.spacing,
-    sectionGap: style.sectionGap,
-    itemGap: style.itemGap,
+    margin: Math.min(36, Math.max(24, Number(style.margin) || 30)),
+    bodySize,
+    spacing,
+    lineHeight: bodySize * spacing,
+    sectionGap: Math.min(10, Math.max(6, Number(style.sectionGap) || 8)),
+    itemGap: Math.min(6, Math.max(3, Number(style.itemGap) || 4)),
     bulletIndent: style.bulletIndent,
     headingSize: 10,
     headingHeight: 16,
@@ -199,13 +202,13 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         return { ...initialStyle, font: savedStyle.font || initialStyle.font, accent: savedStyle.accent === '#3730a3' ? '#000000' : (savedStyle.accent || initialStyle.accent), template: savedStyle.template || initialStyle.template };
       }
       const currentPreset = savedStyle.preset !== 'custom' ? layoutPresets[savedStyle.preset] : null;
-      return { ...initialStyle, ...savedStyle, ...currentPreset, accent: savedStyle.accent === '#3730a3' ? '#000000' : savedStyle.accent };
+      const merged = { ...initialStyle, ...savedStyle, ...currentPreset };
+      return { ...merged, size: Math.min(11, Math.max(9.5, Number(merged.size) || 10)), spacing: Math.min(1.22, Math.max(1.08, Number(merged.spacing) || 1.15)), margin: Math.min(36, Math.max(24, Number(merged.margin) || 30)), sectionGap: Math.min(10, Math.max(6, Number(merged.sectionGap) || 8)), itemGap: Math.min(6, Math.max(3, Number(merged.itemGap) || 4)), accent: savedStyle.accent === '#3730a3' ? '#000000' : savedStyle.accent };
     } catch { return initialStyle; }
   });
   const [saved, setSaved] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadingWord, setDownloadingWord] = useState(false);
-  const [draggedSection, setDraggedSection] = useState(null);
   const skipAutosaveRef = useRef(false);
   const layout = useMemo(() => getLayoutMetrics(style), [style]);
 
@@ -239,6 +242,11 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
   }, [resume]);
 
   function update(field, value) { setResume((current) => ({ ...current, [field]: value })); }
+  function updateAppearance(field, value) {
+    const next = { ...style, [field]: value, preset: 'custom' };
+    setStyle(next);
+    setResume((current) => ({ ...current, layoutStyle: next }));
+  }
   function updateExperience(id, field, value) { setResume((current) => ({ ...current, experience: current.experience.map((item) => item.id === id ? { ...item, [field]: value } : item) })); }
   function updateBullet(id, index, value) { setResume((current) => ({ ...current, experience: current.experience.map((item) => item.id === id ? { ...item, bullets: item.bullets.map((bullet, bulletIndex) => bulletIndex === index ? value : bullet) } : item) })); }
   function updateEducation(id, field, value) { setResume((current) => ({ ...current, education: current.education.map((item) => item.id === id ? { ...item, [field]: value } : item) })); }
@@ -266,19 +274,6 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
     setStyle(initialStyle);
     localStorage.removeItem(storageKey);
   }
-  function moveSection(target) {
-    if (!draggedSection || draggedSection === target) return;
-    setResume((current) => {
-      const order = [...(current.sectionOrder || initialResume.sectionOrder)];
-      const from = order.indexOf(draggedSection);
-      const to = order.indexOf(target);
-      order.splice(from, 1);
-      order.splice(to, 0, draggedSection);
-      return { ...current, sectionOrder: order };
-    });
-    setDraggedSection(null);
-  }
-
   function shiftSection(section, direction) {
     setResume((current) => {
       const order = [...(current.sectionOrder || initialResume.sectionOrder)];
@@ -311,7 +306,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         if (!value) return;
         pdf.setFont(pdfFont, weight); pdf.setFontSize(size); pdf.setTextColor(color);
         const lines = measureLines(value, size, indent, weight);
-        lines.forEach((line) => { if (y > pageHeight - margin) { pdf.addPage(); y = margin; } pdf.text(line, margin + indent, y); y += size * style.spacing; }); y += gap;
+        lines.forEach((line) => { if (y > pageHeight - margin) { pdf.addPage(); y = margin; } pdf.text(line, margin + indent, y); y += size * layout.spacing; }); y += gap;
       };
       const heading = (value) => {
         const broke = ensureSpace(layout.headingHeight + layout.headingContentGap + layout.lineHeight);
@@ -325,15 +320,15 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       };
       const twoColumnText = (left, right, size = layout.bodySize, weight = 'bold', gap = 2) => {
         if (!left && !right) return;
-        ensureSpace(size * style.spacing + gap);
+        ensureSpace(size * layout.spacing + gap);
         pdf.setFont(pdfFont, weight); pdf.setFontSize(size); pdf.setTextColor('#0f172a');
         const rightWidth = right ? pdf.getTextWidth(right) + 12 : 0;
         const leftLines = pdf.splitTextToSize(String(left || ''), Math.max(120, width - rightWidth));
         leftLines.forEach((line, index) => {
-          ensureSpace(size * style.spacing);
+          ensureSpace(size * layout.spacing);
           pdf.text(line, margin, y);
           if (index === 0 && right) pdf.text(right, margin + width, y, { align: 'right' });
-          y += size * style.spacing;
+          y += size * layout.spacing;
         });
         y += gap;
       };
@@ -358,7 +353,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         if (!value) return;
         pdf.setFont(pdfFont, weight); pdf.setFontSize(size); pdf.setTextColor(color);
         const lines = pdf.splitTextToSize(String(value), width);
-        lines.forEach((line) => { pdf.text(line, pageWidth / 2, y, { align: 'center' }); y += size * style.spacing; });
+        lines.forEach((line) => { pdf.text(line, pageWidth / 2, y, { align: 'center' }); y += size * 1.08; });
         y += gap;
       };
       const centeredContact = (items) => {
@@ -374,7 +369,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
           x += pdf.getTextWidth(item.value);
           if (index < visible.length - 1) { pdf.text(separator, x, y); x += pdf.getTextWidth(separator); }
         });
-        y += 9 * style.spacing;
+        y += 9 * 1.15;
       };
       centeredText(resume.name || (resume.imported ? '' : 'YOUR NAME'), 22, 'bold', 2, '#000000');
       centeredText(resume.role || (resume.imported ? '' : 'TARGET ROLE'), 12, 'bold', 3, '#000000');
@@ -386,7 +381,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       ]);
       const pdfSections = {
         summary: () => { if (!resume.summary) return; heading('Professional summary'); text(resume.summary, layout.bodySize, 'normal', 0); },
-        experience: () => { const items = resume.experience.filter((item) => item.role || item.company || item.start || item.end || item.bullets.some(Boolean)); if (!items.length) return; heading('Experience'); items.forEach((item, itemIndex) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); const title = [item.role, item.company].filter(Boolean).join(' — '); const bullets = item.bullets.filter(Boolean); pdf.setFont(pdfFont, 'bold'); pdf.setFontSize(layout.bodySize); const dateWidth = dates ? pdf.getTextWidth(dates) + 12 : 0; const titleLines = pdf.splitTextToSize(title, Math.max(120, width - dateWidth)).length; const jobHeight = (titleLines * layout.lineHeight) + (item.location ? 9 * style.spacing + 2 : 0) + bullets.reduce((height, bullet) => height + (measureLines(`• ${bullet}`, layout.bodySize, layout.bulletIndent).length * layout.lineHeight), 0); if (jobHeight < pageHeight - margin * 2) ensureSpace(jobHeight); twoColumnText(title, dates, layout.bodySize, 'bold', 1); text(item.location, 9, 'normal', 2); bullets.forEach((bullet) => text(`• ${bullet}`, layout.bodySize, 'normal', 0, '#334155', layout.bulletIndent)); if (itemIndex < items.length - 1) y += layout.itemGap; }); },
+        experience: () => { const items = resume.experience.filter((item) => item.role || item.company || item.start || item.end || item.bullets.some(Boolean)); if (!items.length) return; heading('Experience'); items.forEach((item, itemIndex) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); const title = [item.role, item.company].filter(Boolean).join(' — '); const bullets = item.bullets.filter(Boolean); pdf.setFont(pdfFont, 'bold'); pdf.setFontSize(layout.bodySize); const dateWidth = dates ? pdf.getTextWidth(dates) + 12 : 0; const titleLines = pdf.splitTextToSize(title, Math.max(120, width - dateWidth)).length; const jobHeight = (titleLines * layout.lineHeight) + (item.location ? 9 * layout.spacing + 2 : 0) + bullets.reduce((height, bullet) => height + (measureLines(`• ${bullet}`, layout.bodySize, layout.bulletIndent).length * layout.lineHeight), 0); if (jobHeight < pageHeight - margin * 2) ensureSpace(jobHeight); twoColumnText(title, dates, layout.bodySize, 'bold', 1); text(item.location, 9, 'normal', 2); bullets.forEach((bullet) => text(`• ${bullet}`, layout.bodySize, 'normal', 0, '#334155', layout.bulletIndent)); if (itemIndex < items.length - 1) y += layout.itemGap; }); },
         skills: () => { if (!resume.skills) return; heading('Skills'); const rows = parseSkillRows(resume.skills); rows.forEach((row, index) => labeledText(row.category, row.skills, index < rows.length - 1 ? 1 : 0)); },
         education: () => { const items = resume.education.filter((item) => item.degree || item.school || item.year); if (!items.length) return; heading('Education'); items.forEach((item, index) => twoColumnText([item.degree, item.school].filter(Boolean).join(' — '), item.year, layout.bodySize, 'bold', index < items.length - 1 ? Math.max(3, layout.itemGap / 2) : 0)); }
       };
@@ -411,7 +406,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       const children = [];
       const paragraph = (value, options = {}) => new Paragraph({
         alignment: options.center ? AlignmentType.CENTER : AlignmentType.LEFT,
-        spacing: { before: options.before, after: options.after ?? 80, line: Math.round(style.spacing * 240) },
+        spacing: { before: options.before, after: options.after ?? 0, line: Math.round(layout.spacing * 240) },
         tabStops: options.tabs ? [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }] : undefined,
         bullet: options.bullet ? { level: 0 } : undefined,
         border: options.heading ? { bottom: { color: '000000', style: BorderStyle.SINGLE, size: 4, space: 2 } } : undefined,
@@ -451,7 +446,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
           sectionHeading('Skills');
           const rows = parseSkillRows(resume.skills);
           rows.forEach((row, index) => children.push(new Paragraph({
-            spacing: { after: index < rows.length - 1 ? 30 : 0, line: Math.round(style.spacing * 240) },
+            spacing: { after: index < rows.length - 1 ? 20 : 0, line: Math.round(layout.spacing * 240) },
             children: [
               ...(row.category ? [new TextRun({ text: `${row.category}: `, bold: true, size: bodySize, color: '000000', font: style.font })] : []),
               new TextRun({ text: row.skills, size: bodySize, color: '000000', font: style.font })
@@ -496,6 +491,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
     { value: resume.website, href: linkTarget(resume.website) }
   ].filter((item) => item.value);
   const previewScale = 595 / layout.page.width;
+  const previewStyle = { ...style, size: layout.bodySize, spacing: layout.spacing, sectionGap: layout.sectionGap, itemGap: layout.itemGap, bulletIndent: layout.bulletIndent };
   return <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-7">
     <header className="relative mb-6 overflow-hidden rounded-3xl bg-slate-950 p-6 text-white sm:p-8"><div className="absolute inset-y-0 right-0 hidden w-[38%] lg:block"><div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/30 to-transparent" /><img src={resumeBlocks} alt="Resume content blocks combining into a finished document" className="h-full w-full object-cover opacity-75" /></div><div className="relative max-w-3xl"><p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">{mode === 'format' ? 'Resume formatting studio' : 'Guided resume builder'}</p><h1 className="mt-2 text-3xl font-black tracking-tight">{mode === 'format' ? 'Make every page clean and consistent.' : 'Build your resume, one simple block at a time.'}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Fill in the blocks on the left. Your professional, ATS-friendly document updates instantly on the right.</p><div className="mt-5 max-w-xs"><div className="flex justify-between text-xs font-bold"><span>Resume complete</span><span>{completion}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-cyan-400 transition-all duration-500" style={{ width: `${completion}%` }} /></div></div></div></header>
     <section className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5" aria-labelledby="ats-readiness-title"><div><p id="ats-readiness-title" className="text-sm font-black text-emerald-950">ATS readiness: {atsReadiness.score}%</p><p className="mt-1 text-xs text-emerald-800">This checks résumé basics. Match the wording to each real job description for the strongest result.</p></div><div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{atsReadiness.checks.map((check) => <div key={check.label} className={`flex gap-2 rounded-xl p-3 text-xs font-semibold ${check.passed ? 'bg-white/70 text-emerald-800' : 'border border-amber-200 bg-amber-50 text-amber-900'}`}><span aria-hidden="true" className="font-black">{check.passed ? '✓' : '!'}</span><span>{check.label}</span></div>)}</div></section>
@@ -512,11 +508,20 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
 
       <aside className="self-start">
         <section className="mb-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-bold text-slate-700">Choose section order</p><p className="mt-1 text-xs text-slate-500">Use the arrows—no dragging required.</p><div className="mt-3 grid gap-2">{(resume.sectionOrder || initialResume.sectionOrder).map((section, index, order) => <div key={section} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><span className="min-w-0 flex-1 truncate text-xs font-bold text-slate-700">{index + 1}. {sectionLabels[section] || resume.customSections?.find((item) => item.id === section)?.title || 'Section'}</span><button type="button" aria-label={`Move ${sectionLabels[section] || 'section'} up`} disabled={index === 0} onClick={() => shiftSection(section, -1)} className="rounded-lg bg-white px-2 py-1 text-sm font-black text-slate-600 shadow-sm disabled:cursor-not-allowed disabled:opacity-30">↑</button><button type="button" aria-label={`Move ${sectionLabels[section] || 'section'} down`} disabled={index === order.length - 1} onClick={() => shiftSection(section, 1)} className="rounded-lg bg-white px-2 py-1 text-sm font-black text-slate-600 shadow-sm disabled:cursor-not-allowed disabled:opacity-30">↓</button></div>)}</div></section>
-        <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="grid gap-3 sm:grid-cols-3"><label className="text-xs font-bold text-slate-600">Font<select value={style.font} onChange={(e) => setStyle({ ...style, font: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option>Arial</option><option>Calibri</option><option>Georgia</option><option>Times New Roman</option></select></label><label className="text-xs font-bold text-slate-600">Text size<select value={style.size} onChange={(e) => setStyle({ ...style, size: Number(e.target.value) })} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option value="10">10 pt</option><option value="10.5">10.5 pt</option><option value="11">11 pt</option><option value="12">12 pt</option></select></label><label className="text-xs font-bold text-slate-600">Spacing<select value={style.spacing} onChange={(e) => setStyle({ ...style, spacing: Number(e.target.value) })} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option value="1.3">Compact</option><option value="1.45">Normal</option><option value="1.65">Spacious</option></select></label></div><div className="mt-4 border-t border-slate-100 pt-3"><p className="text-xs font-bold text-slate-600">Drag to reorder entire sections</p><div className="mt-2 flex flex-wrap gap-2">{(resume.sectionOrder || initialResume.sectionOrder).map((section) => <button key={section} type="button" draggable onDragStart={() => setDraggedSection(section)} onDragOver={(event) => event.preventDefault()} onDrop={() => moveSection(section)} onDragEnd={() => setDraggedSection(null)} className={`cursor-grab rounded-lg border px-3 py-2 text-xs font-bold active:cursor-grabbing ${draggedSection === section ? 'border-indigo-400 bg-indigo-50 text-indigo-700 opacity-60' : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300'}`}><span className="mr-1 text-slate-400">⠿</span>{sectionLabels[section] || resume.customSections?.find((item) => item.id === section)?.title || 'Section'}</button>)}</div></div><div className="mt-3 flex flex-wrap items-center gap-2"><label className="mr-auto flex items-center gap-2 text-xs font-bold text-slate-600">Heading color <input type="color" value={style.accent} onChange={(e) => setStyle({ ...style, accent: e.target.value })} className="h-8 w-10" /></label><button type="button" onClick={resetDraft} className="rounded-lg px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50">Start over</button><button type="button" onClick={saveDraft} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold hover:bg-slate-50">{saved ? 'Saved ✓' : 'Save draft'}</button><button type="button" onClick={downloadWord} disabled={downloadingWord} className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 disabled:opacity-60">{downloadingWord ? 'Creating…' : 'Download Word'}</button><button type="button" onClick={downloadPdf} disabled={downloading} className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60">{downloading ? 'Creating…' : 'Download PDF'}</button></div></div>
-        <div className="overflow-x-auto overflow-y-visible rounded-2xl bg-slate-200 p-3 pb-8 sm:p-6 sm:pb-10"><article className="mx-auto min-w-[520px] max-w-[595px] bg-white shadow-2xl" style={{ minHeight: `${layout.page.height * previewScale}px`, padding: `${layout.margin * previewScale}px`, fontFamily: style.font, fontSize: `${layout.bodySize * previewScale}px`, lineHeight: style.spacing }}><header className={style.template === 'modern' ? 'text-left' : 'text-center'}><h1 className="text-[2.25em] font-black tracking-tight text-slate-950">{resume.name || (resume.imported ? '' : 'YOUR NAME')}</h1><p className="mt-1 text-[1.2em] font-bold" style={{ color: style.accent }}>{resume.role || (resume.imported ? '' : 'TARGET ROLE')}</p><p className="mt-2 break-words text-[0.9em] text-slate-500">{contactItems.length ? contactItems.map((item, index) => <span key={`${item.value}-${index}`}>{index > 0 && ' · '}{item.href ? <a href={item.href} target="_blank" rel="noreferrer" className="text-blue-700 underline">{item.value}</a> : item.value}</span>) : (resume.imported ? '' : 'City, State · phone · email · LinkedIn')}</p></header>{(resume.sectionOrder || initialResume.sectionOrder).map((section) => {
+        <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-bold text-slate-700">Text appearance</p>
+          <p className="mt-1 text-xs text-slate-500">Balanced values keep the preview and downloads consistent.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <label className="text-xs font-bold text-slate-600">Font<select value={style.font} onChange={(e) => updateAppearance('font', e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option>Arial</option><option>Calibri</option><option>Georgia</option><option>Times New Roman</option></select></label>
+            <label className="text-xs font-bold text-slate-600">Text size<select value={layout.bodySize} onChange={(e) => updateAppearance('size', Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option value="9.5">Small</option><option value="10">Balanced</option><option value="10.5">Medium</option><option value="11">Large</option></select></label>
+            <label className="text-xs font-bold text-slate-600">Line spacing<select value={layout.spacing} onChange={(e) => updateAppearance('spacing', Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option value="1.08">Tight</option><option value="1.15">Balanced</option><option value="1.22">Relaxed</option></select></label>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3"><label className="mr-auto flex items-center gap-2 text-xs font-bold text-slate-600">Heading color <input type="color" value={style.accent} onChange={(e) => updateAppearance('accent', e.target.value)} className="h-8 w-10" /></label><button type="button" onClick={resetDraft} className="rounded-lg px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50">Start over</button><button type="button" onClick={saveDraft} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold hover:bg-slate-50">{saved ? 'Saved ✓' : 'Save draft'}</button><button type="button" onClick={downloadWord} disabled={downloadingWord} className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 disabled:opacity-60">{downloadingWord ? 'Creating…' : 'Download Word'}</button><button type="button" onClick={downloadPdf} disabled={downloading} className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60">{downloading ? 'Creating…' : 'Download PDF'}</button></div>
+        </div>
+        <div className="overflow-x-auto overflow-y-visible rounded-2xl bg-slate-200 p-3 pb-8 sm:p-6 sm:pb-10"><article className="mx-auto min-w-[520px] max-w-[595px] bg-white shadow-2xl" style={{ minHeight: `${layout.page.height * previewScale}px`, padding: `${layout.margin * previewScale}px`, fontFamily: style.font, fontSize: `${layout.bodySize * previewScale}px`, lineHeight: layout.spacing }}><header className={style.template === 'modern' ? 'text-left' : 'text-center'}><h1 className="text-[2.25em] font-black tracking-tight text-slate-950" style={{ lineHeight: 1.08 }}>{resume.name || (resume.imported ? '' : 'YOUR NAME')}</h1><p className="mt-1 text-[1.2em] font-bold" style={{ color: style.accent, lineHeight: 1.08 }}>{resume.role || (resume.imported ? '' : 'TARGET ROLE')}</p><p className="mt-2 break-words text-[0.9em] text-slate-500" style={{ lineHeight: 1.15 }}>{contactItems.length ? contactItems.map((item, index) => <span key={`${item.value}-${index}`}>{index > 0 && ' · '}{item.href ? <a href={item.href} target="_blank" rel="noreferrer" className="text-blue-700 underline">{item.value}</a> : item.value}</span>) : (resume.imported ? '' : 'City, State · phone · email · LinkedIn')}</p></header>{(resume.sectionOrder || initialResume.sectionOrder).map((section) => {
               const custom = resume.customSections?.find((item) => item.id === section);
-              if (custom) return <ImportedSection key={custom.id} section={custom} color={style.accent} gap={style.sectionGap} />;
-              return <PreviewSectionContent key={section} section={section} resume={resume} color={style.accent} style={style} />;
+              if (custom) return <ImportedSection key={custom.id} section={custom} color={style.accent} gap={layout.sectionGap} />;
+              return <PreviewSectionContent key={section} section={section} resume={resume} color={style.accent} style={previewStyle} />;
             })}</article></div>
       </aside>
     </div>
