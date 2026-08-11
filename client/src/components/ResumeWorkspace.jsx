@@ -153,10 +153,13 @@ const sectionLabels = { summary: 'Summary', experience: 'Experience', skills: 'S
 function PreviewSectionContent({ section, resume, color, style: selectedStyle }) {
   const style = selectedStyle || resume.layoutStyle || initialStyle;
   const placeholder = (value, fallback) => value || (resume.imported ? '' : fallback);
+  const hasExperience = resume.experience.some((item) => item.role || item.company || item.start || item.end || item.bullets.some(Boolean));
+  const hasEducation = resume.education.some((item) => item.degree || item.school || item.year);
+  if (resume.imported && ((section === 'summary' && !resume.summary) || (section === 'experience' && !hasExperience) || (section === 'skills' && !resume.skills) || (section === 'education' && !hasEducation))) return null;
   if (section === 'summary') return <ResumeSection title="Professional Summary" color={color} gap={style.sectionGap}><p className="break-words">{placeholder(resume.summary, 'Write a focused 2–4 line summary that highlights your experience, specialization, and strongest result.')}</p></ResumeSection>;
-  if (section === 'experience') return <ResumeSection title="Experience" color={color} gap={style.sectionGap}>{resume.experience.map((item) => <div key={item.id} className="break-inside-avoid" style={{ marginBottom: `${style.itemGap}px` }}><div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-bold text-slate-950"><span>{placeholder(item.role, 'ROLE TITLE')}{item.company ? ` · ${item.company}` : resume.imported ? '' : ' · COMPANY'}</span>{(item.start || item.end || !resume.imported) && <span className="whitespace-nowrap">{placeholder(item.start, 'START')} – {placeholder(item.end, 'END')}</span>}</div>{item.bullets.length > 0 && <ul className="mt-0.5 list-disc" style={{ paddingLeft: `${style.bulletIndent}px` }}>{item.bullets.map((bullet, index) => <li key={index} className="break-words">{placeholder(bullet, 'Describe what you achieved, how you did it, and the measurable result.')}</li>)}</ul>}</div>)}</ResumeSection>;
+  if (section === 'experience') return <ResumeSection title="Experience" color={color} gap={style.sectionGap}>{resume.experience.map((item, index) => <div key={item.id} className="break-inside-avoid" style={{ marginBottom: index < resume.experience.length - 1 ? `${style.itemGap}px` : 0 }}><div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-bold text-slate-950"><span>{placeholder(item.role, 'ROLE TITLE')}{item.company ? ` · ${item.company}` : resume.imported ? '' : ' · COMPANY'}</span>{(item.start || item.end || !resume.imported) && <span className="whitespace-nowrap">{placeholder(item.start, 'START')} – {placeholder(item.end, 'END')}</span>}</div>{item.bullets.length > 0 && <ul className="mt-0.5 list-disc" style={{ paddingLeft: `${style.bulletIndent}px` }}>{item.bullets.map((bullet, bulletIndex) => <li key={bulletIndex} className="break-words">{placeholder(bullet, 'Describe what you achieved, how you did it, and the measurable result.')}</li>)}</ul>}</div>)}</ResumeSection>;
   if (section === 'skills') return <ResumeSection title="Skills" color={color} gap={style.sectionGap}><SkillsContent value={resume.skills} fallback={resume.imported ? '' : 'Add relevant skills separated by commas.'} /></ResumeSection>;
-  if (section === 'education') return <ResumeSection title="Education" color={color} gap={style.sectionGap}>{resume.education.map((item) => <div key={item.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5 font-bold" style={{ marginBottom: `${Math.max(2, style.itemGap / 2)}px` }}><span className="min-w-0 flex-1 break-words">{placeholder(item.degree, 'DEGREE')}{item.school ? ` · ${item.school}` : resume.imported ? '' : ' · INSTITUTION'}</span><span className="whitespace-nowrap">{placeholder(item.year, 'YEAR')}</span></div>)}</ResumeSection>;
+  if (section === 'education') return <ResumeSection title="Education" color={color} gap={style.sectionGap}>{resume.education.map((item, index) => <div key={item.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5 font-bold" style={{ marginBottom: index < resume.education.length - 1 ? `${Math.max(2, style.itemGap / 2)}px` : 0 }}><span className="min-w-0 flex-1 break-words">{placeholder(item.degree, 'DEGREE')}{item.school ? ` · ${item.school}` : resume.imported ? '' : ' · INSTITUTION'}</span><span className="whitespace-nowrap">{placeholder(item.year, 'YEAR')}</span></div>)}</ResumeSection>;
   return null;
 }
 
@@ -294,8 +297,8 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         });
         y += gap;
       };
-      const labeledText = (label, value) => {
-        if (!label) { text(value, style.size, 'normal', 1); return; }
+      const labeledText = (label, value, gap = 1) => {
+        if (!label) { text(value, style.size, 'normal', gap); return; }
         ensureSpace(style.size * style.spacing * 2);
         pdf.setFontSize(style.size); pdf.setTextColor('#334155');
         pdf.setFont('helvetica', 'bold');
@@ -309,7 +312,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
           pdf.text(line, index === 0 ? margin + prefixWidth : margin, y);
           y += style.size * style.spacing;
         });
-        y += 1;
+        y += gap;
       };
       const centeredText = (value, size, weight = 'normal', gap = 4, color = '#000000') => {
         if (!value) return;
@@ -342,10 +345,10 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         { value: resume.website, url: linkTarget(resume.website) }
       ]);
       const pdfSections = {
-        summary: () => { heading('Professional summary'); text(resume.summary); },
-        experience: () => { heading('Experience'); resume.experience.forEach((item) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); const bullets = item.bullets.filter(Boolean); const locationHeight = item.location ? 9 * style.spacing + 2 : 0; const firstBulletHeight = bullets.length ? style.size * style.spacing : 0; ensureSpace(11 * style.spacing + 1 + locationHeight + firstBulletHeight); twoColumnText([item.role, item.company].filter(Boolean).join(' — '), dates, 11, 'bold', 1); text(item.location, 9, 'normal', 2); bullets.forEach((bullet) => text(`• ${bullet}`, style.size, 'normal', 1, '#334155', style.bulletIndent)); y += style.itemGap; }); },
-        skills: () => { heading('Skills'); parseSkillRows(resume.skills).forEach((row) => labeledText(row.category, row.skills)); },
-        education: () => { heading('Education'); resume.education.forEach((item) => twoColumnText([item.degree, item.school].filter(Boolean).join(' — '), item.year, style.size, 'bold', Math.max(3, style.itemGap / 2))); }
+        summary: () => { if (!resume.summary) return; heading('Professional summary'); text(resume.summary, style.size, 'normal', 0); },
+        experience: () => { const items = resume.experience.filter((item) => item.role || item.company || item.start || item.end || item.bullets.some(Boolean)); if (!items.length) return; heading('Experience'); items.forEach((item, itemIndex) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); const bullets = item.bullets.filter(Boolean); const locationHeight = item.location ? 9 * style.spacing + 2 : 0; const firstBulletHeight = bullets.length ? style.size * style.spacing : 0; ensureSpace(11 * style.spacing + 1 + locationHeight + firstBulletHeight); twoColumnText([item.role, item.company].filter(Boolean).join(' — '), dates, 11, 'bold', 1); text(item.location, 9, 'normal', 2); bullets.forEach((bullet, bulletIndex) => text(`• ${bullet}`, style.size, 'normal', bulletIndex < bullets.length - 1 ? 1 : 0, '#334155', style.bulletIndent)); if (itemIndex < items.length - 1) y += style.itemGap; }); },
+        skills: () => { if (!resume.skills) return; heading('Skills'); const rows = parseSkillRows(resume.skills); rows.forEach((row, index) => labeledText(row.category, row.skills, index < rows.length - 1 ? 1 : 0)); },
+        education: () => { const items = resume.education.filter((item) => item.degree || item.school || item.year); if (!items.length) return; heading('Education'); items.forEach((item, index) => twoColumnText([item.degree, item.school].filter(Boolean).join(' — '), item.year, style.size, 'bold', index < items.length - 1 ? Math.max(3, style.itemGap / 2) : 0)); }
       };
       (resume.sectionOrder || initialResume.sectionOrder).forEach((section) => {
         if (pdfSections[section]) { pdfSections[section](); return; }
@@ -390,23 +393,25 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       ]) }));
       const sectionHeading = (title, preserveCase = false) => children.push(paragraph(preserveCase ? title : title.toUpperCase(), { heading: true, bold: true, size: 20, before: Math.round(style.sectionGap * 20), after: 80, keepNext: true }));
       const wordSections = {
-        summary: () => { if (!resume.summary) return; sectionHeading('Professional Summary'); children.push(paragraph(resume.summary)); },
+        summary: () => { if (!resume.summary) return; sectionHeading('Professional Summary'); children.push(paragraph(resume.summary, { after: 0 })); },
         experience: () => {
           if (!resume.experience.length) return;
           sectionHeading('Experience');
-          resume.experience.forEach((item) => {
+          resume.experience.forEach((item, itemIndex) => {
             const title = [item.role, item.company].filter(Boolean).join(' · ');
             const dates = [item.start, item.end].filter(Boolean).join(' – ');
             const bullets = item.bullets.filter(Boolean);
-            children.push(paragraph(`${title}${dates ? `\t${dates}` : ''}`, { bold: true, tabs: true, after: bullets.length ? 30 : Math.round(style.itemGap * 20), keepNext: bullets.length > 0 }));
-            bullets.forEach((bullet, index) => children.push(paragraph(bullet, { bullet: true, after: index === bullets.length - 1 ? Math.round(style.itemGap * 20) : 20 })));
+            const hasFollowingItem = itemIndex < resume.experience.length - 1;
+            children.push(paragraph(`${title}${dates ? `\t${dates}` : ''}`, { bold: true, tabs: true, after: bullets.length ? 30 : hasFollowingItem ? Math.round(style.itemGap * 20) : 0, keepNext: bullets.length > 0 }));
+            bullets.forEach((bullet, index) => children.push(paragraph(bullet, { bullet: true, after: index === bullets.length - 1 ? (hasFollowingItem ? Math.round(style.itemGap * 20) : 0) : 20 })));
           });
         },
         skills: () => {
           if (!resume.skills) return;
           sectionHeading('Skills');
-          parseSkillRows(resume.skills).forEach((row) => children.push(new Paragraph({
-            spacing: { after: 30, line: Math.round(style.spacing * 240) },
+          const rows = parseSkillRows(resume.skills);
+          rows.forEach((row, index) => children.push(new Paragraph({
+            spacing: { after: index < rows.length - 1 ? 30 : 0, line: Math.round(style.spacing * 240) },
             children: [
               ...(row.category ? [new TextRun({ text: `${row.category}: `, bold: true, size: bodySize, color: '000000', font: style.font })] : []),
               new TextRun({ text: row.skills, size: bodySize, color: '000000', font: style.font })
@@ -416,9 +421,9 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         education: () => {
           if (!resume.education.length) return;
           sectionHeading('Education');
-          resume.education.forEach((item) => {
+          resume.education.forEach((item, index) => {
             const study = [item.degree, item.school].filter(Boolean).join(' · ');
-            children.push(paragraph(`${study}${item.year ? `\t${item.year}` : ''}`, { bold: true, tabs: true, after: Math.round(Math.max(2, style.itemGap / 2) * 20) }));
+            children.push(paragraph(`${study}${item.year ? `\t${item.year}` : ''}`, { bold: true, tabs: true, after: index < resume.education.length - 1 ? Math.round(Math.max(2, style.itemGap / 2) * 20) : 0 }));
           });
         }
       };
@@ -469,7 +474,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         <div className="overflow-x-auto overflow-y-visible rounded-2xl bg-slate-200 p-3 pb-8 sm:p-6 sm:pb-10"><article className="mx-auto min-h-[842px] min-w-[520px] max-w-[595px] bg-white shadow-2xl" style={{ padding: `${style.margin}px`, fontFamily: style.font, fontSize: `${style.size}px`, lineHeight: style.spacing }}><header className={style.template === 'modern' ? 'text-left' : 'text-center'}><h1 className="text-[2.25em] font-black tracking-tight text-slate-950">{resume.name || (resume.imported ? '' : 'YOUR NAME')}</h1><p className="mt-1 text-[1.2em] font-bold" style={{ color: style.accent }}>{resume.role || (resume.imported ? '' : 'TARGET ROLE')}</p><p className="mt-2 break-words text-[0.9em] text-slate-500">{contactItems.length ? contactItems.map((item, index) => <span key={`${item.value}-${index}`}>{index > 0 && ' · '}{item.href ? <a href={item.href} target="_blank" rel="noreferrer" className="text-blue-700 underline">{item.value}</a> : item.value}</span>) : (resume.imported ? '' : 'City, State · phone · email · LinkedIn')}</p></header>{(resume.sectionOrder || initialResume.sectionOrder).map((section) => {
               const custom = resume.customSections?.find((item) => item.id === section);
               if (custom) return <ImportedSection key={custom.id} section={custom} color={style.accent} gap={style.sectionGap} />;
-              return <PreviewSectionContent key={section} section={section} resume={resume} color={style.accent} />;
+              return <PreviewSectionContent key={section} section={section} resume={resume} color={style.accent} style={style} />;
             })}</article></div>
       </aside>
     </div>
