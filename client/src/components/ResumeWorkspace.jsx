@@ -93,7 +93,8 @@ function cleanImportedResume(data) {
       const bullet = rawBullet.trim();
       if (!bullet || pageMarker.test(bullet)) continue;
       const headingParts = bullet.split(/\s+(?:—|–)\s+/);
-      if (headingParts.length === 2 && bullet.length < 140) {
+      const looksLikeMisplacedHeading = headingParts.length === 2 && bullet.length < 100 && headingParts.every((part) => part.length <= 45) && !/[.!?]$/.test(bullet);
+      if (looksLikeMisplacedHeading) {
         current = { id: makeId(), role: headingParts[0], company: headingParts[1], location: '', start: '', end: '', bullets: [] };
         cleanedExperience.push(current);
         continue;

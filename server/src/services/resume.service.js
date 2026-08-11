@@ -213,10 +213,15 @@ export function buildEditorResume(resume) {
   const location = contactLine.split(/[•|]/)[0]?.trim() ?? '';
   const experienceLines = nonEmptyLines(resume.sections.experience);
   const datePattern = /((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+)?(?:19|20)\d{2}\s*(?:-|–|—|to)\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+)?(?:Present|Current|Now|(?:19|20)\d{2})/i;
+  // Bullet glyphs from custom/symbol fonts often extract as mangled non-ASCII characters
+  // (e.g. a PDF's Wingdings bullet coming out as "ð·") rather than a normal "•" or "-".
+  // Matching any short run of non-word leading characters catches those too, so bullets
+  // don't get silently dropped or misread as a new job heading.
+  const bulletPrefix = /^\s*(?:[-•▪◦*‣⁃●○∙·]|\d+[.)]|[^\w\s]{1,2}(?=\s))\s+/;
   const experience = [];
   for (const line of experienceLines) {
     const date = line.match(datePattern)?.[0];
-    const isBullet = /^\s*(?:[-•▪◦*]|\d+[.)])\s+/.test(line);
+    const isBullet = bulletPrefix.test(line);
     const title = line.replace(date ?? '', '').replace(/[|,]+\s*$/, '').trim();
     const isRoleHeading = !isBullet && ((date && title) || (!date && /\s+(?:—|–|\bat\b)\s+/i.test(line)));
     if (isRoleHeading || (!experience.length && !isBullet && !date)) {
@@ -244,7 +249,7 @@ export function buildEditorResume(resume) {
       experience.at(-1).start = start;
       experience.at(-1).end = end;
     } else if (isBullet && experience.length) {
-      experience.at(-1).bullets.push(line.replace(/^\s*(?:[-•▪◦*]|\d+[.)])\s+/, ''));
+      experience.at(-1).bullets.push(line.replace(bulletPrefix, ''));
     } else if (experience.length && experience.at(-1).bullets.length) {
       const bullets = experience.at(-1).bullets;
       bullets[bullets.length - 1] = `${bullets.at(-1)} ${line}`.replace(/\s+/g, ' ').trim();
@@ -256,19 +261,31 @@ export function buildEditorResume(resume) {
     return lines;
   }, []);
   const education = [];
+  const degreeWordPattern = /\b(?:masters?|bachelors?|associates?|doctor|ph\.?d|degree|diploma)\b/i;
+  // Resumes usually list the degree line, then a separate school + year line right after
+  // it — buffer a standalone degree line and attach it to the next entry rather than the
+  // previous one, otherwise degrees end up shifted onto the wrong school.
+  let pendingDegree = '';
   for (const line of educationLines) {
     if (/^\s*(?:[-•▪◦*]|\d+[.)])\s+/.test(line)) continue;
     const year = line.match(/(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+)?(?:19|20)\d{2}(?:\s*(?:-|–|—)\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+)?(?:19|20)\d{2})?/i)?.[0] ?? '';
     const body = line.replace(year, '').replace(/[|,—-]+\s*$/, '').trim();
     const parts = body.split(/\s+(?:—|–|\bat\b|\bfrom\b)\s+/i);
     if (parts.length > 1) {
-      education.push({ id: education.length + 1, degree: parts[0], school: parts.slice(1).join(' — '), year });
+      education.push({ id: education.length + 1, degree: pendingDegree || parts[0], school: pendingDegree ? body : parts.slice(1).join(' — '), year });
+      pendingDegree = '';
     } else if (year) {
-      education.push({ id: education.length + 1, degree: '', school: body, year });
-    } else if (education.length && !education.at(-1).degree && /\b(?:masters?|bachelors?|associates?|doctor|ph\.?d|degree|diploma)\b/i.test(body)) {
-      education.at(-1).degree = body;
+      education.push({ id: education.length + 1, degree: pendingDegree, school: body, year });
+      pendingDegree = '';
+    } else if (degreeWordPattern.test(body)) {
+      if (education.length && !education.at(-1).degree && !pendingDegree) education.at(-1).degree = body;
+      else {
+        if (pendingDegree) education.push({ id: education.length + 1, degree: pendingDegree, school: '', year: '' });
+        pendingDegree = body;
+      }
     }
   }
+  if (pendingDegree) education.push({ id: education.length + 1, degree: pendingDegree, school: '', year: '' });
   return {
     name, role, email, phone, location, linkedin, github, website,
     summary: resume.sections.summary,
