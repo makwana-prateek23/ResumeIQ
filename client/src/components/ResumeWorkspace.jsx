@@ -153,7 +153,7 @@ const sectionLabels = { summary: 'Summary', experience: 'Experience', skills: 'S
 function PreviewSectionContent({ section, resume, color, style: selectedStyle }) {
   const style = selectedStyle || resume.layoutStyle || initialStyle;
   const placeholder = (value, fallback) => value || (resume.imported ? '' : fallback);
-  if (section === 'summary') return <ResumeSection title="Professional Summary" color={color} gap={style.sectionGap}><p className="break-words text-justify [text-align-last:left]">{placeholder(resume.summary, 'Write a focused 2–4 line summary that highlights your experience, specialization, and strongest result.')}</p></ResumeSection>;
+  if (section === 'summary') return <ResumeSection title="Professional Summary" color={color} gap={style.sectionGap}><p className="break-words">{placeholder(resume.summary, 'Write a focused 2–4 line summary that highlights your experience, specialization, and strongest result.')}</p></ResumeSection>;
   if (section === 'experience') return <ResumeSection title="Experience" color={color} gap={style.sectionGap}>{resume.experience.map((item) => <div key={item.id} className="break-inside-avoid" style={{ marginBottom: `${style.itemGap}px` }}><div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-bold text-slate-950"><span>{placeholder(item.role, 'ROLE TITLE')}{item.company ? ` · ${item.company}` : resume.imported ? '' : ' · COMPANY'}</span>{(item.start || item.end || !resume.imported) && <span className="whitespace-nowrap">{placeholder(item.start, 'START')} – {placeholder(item.end, 'END')}</span>}</div>{item.bullets.length > 0 && <ul className="mt-0.5 list-disc" style={{ paddingLeft: `${style.bulletIndent}px` }}>{item.bullets.map((bullet, index) => <li key={index} className="break-words">{placeholder(bullet, 'Describe what you achieved, how you did it, and the measurable result.')}</li>)}</ul>}</div>)}</ResumeSection>;
   if (section === 'skills') return <ResumeSection title="Skills" color={color} gap={style.sectionGap}><SkillsContent value={resume.skills} fallback={resume.imported ? '' : 'Add relevant skills separated by commas.'} /></ResumeSection>;
   if (section === 'education') return <ResumeSection title="Education" color={color} gap={style.sectionGap}>{resume.education.map((item) => <div key={item.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5 font-bold" style={{ marginBottom: `${Math.max(2, style.itemGap / 2)}px` }}><span className="min-w-0 flex-1 break-words">{placeholder(item.degree, 'DEGREE')}{item.school ? ` · ${item.school}` : resume.imported ? '' : ' · INSTITUTION'}</span><span className="whitespace-nowrap">{placeholder(item.year, 'YEAR')}</span></div>)}</ResumeSection>;
@@ -280,17 +280,6 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         pdf.line(margin, y + 3, margin + width, y + 3);
         y += 16;
       };
-      const justifiedText = (value) => {
-        if (!value) return;
-        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(style.size); pdf.setTextColor('#334155');
-        const lines = pdf.splitTextToSize(String(value), width);
-        const lineHeight = style.size * style.spacing;
-        ensureSpace(lines.length * lineHeight);
-        // jsPDF only justifies lines when the whole block is passed to one text() call —
-        // justifying line-by-line silently no-ops because each call only ever sees one line.
-        pdf.text(lines, margin, y, { align: 'justify', maxWidth: width });
-        y += lines.length * lineHeight + 5;
-      };
       const twoColumnText = (left, right, size = style.size, weight = 'bold', gap = 2) => {
         if (!left && !right) return;
         ensureSpace(size * style.spacing + gap);
@@ -353,7 +342,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         { value: resume.website, url: linkTarget(resume.website) }
       ]);
       const pdfSections = {
-        summary: () => { heading('Professional summary'); justifiedText(resume.summary); },
+        summary: () => { heading('Professional summary'); text(resume.summary); },
         experience: () => { heading('Experience'); resume.experience.forEach((item) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); const bullets = item.bullets.filter(Boolean); const locationHeight = item.location ? 9 * style.spacing + 2 : 0; const firstBulletHeight = bullets.length ? style.size * style.spacing : 0; ensureSpace(11 * style.spacing + 1 + locationHeight + firstBulletHeight); twoColumnText([item.role, item.company].filter(Boolean).join(' — '), dates, 11, 'bold', 1); text(item.location, 9, 'normal', 2); bullets.forEach((bullet) => text(`• ${bullet}`, style.size, 'normal', 1, '#334155', style.bulletIndent)); y += style.itemGap; }); },
         skills: () => { heading('Skills'); parseSkillRows(resume.skills).forEach((row) => labeledText(row.category, row.skills)); },
         education: () => { heading('Education'); resume.education.forEach((item) => twoColumnText([item.degree, item.school].filter(Boolean).join(' — '), item.year, style.size, 'bold', Math.max(3, style.itemGap / 2))); }
@@ -378,7 +367,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       const bodySize = Math.round(style.size * 2);
       const children = [];
       const paragraph = (value, options = {}) => new Paragraph({
-        alignment: options.center ? AlignmentType.CENTER : options.justify ? AlignmentType.JUSTIFIED : AlignmentType.LEFT,
+        alignment: options.center ? AlignmentType.CENTER : AlignmentType.LEFT,
         spacing: { before: options.before, after: options.after ?? 80, line: Math.round(style.spacing * 240) },
         tabStops: options.tabs ? [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }] : undefined,
         bullet: options.bullet ? { level: 0 } : undefined,
@@ -401,7 +390,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       ]) }));
       const sectionHeading = (title, preserveCase = false) => children.push(paragraph(preserveCase ? title : title.toUpperCase(), { heading: true, bold: true, size: 20, before: Math.round(style.sectionGap * 20), after: 80, keepNext: true }));
       const wordSections = {
-        summary: () => { if (!resume.summary) return; sectionHeading('Professional Summary'); children.push(paragraph(resume.summary, { justify: true })); },
+        summary: () => { if (!resume.summary) return; sectionHeading('Professional Summary'); children.push(paragraph(resume.summary)); },
         experience: () => {
           if (!resume.experience.length) return;
           sectionHeading('Experience');
