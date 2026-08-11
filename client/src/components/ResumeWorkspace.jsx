@@ -18,8 +18,8 @@ function linkTarget(value = '', type = 'url') {
 }
 
 const layoutPresets = {
-  compact: { size: 9.5, spacing: 1.12, margin: 30, sectionGap: 10, itemGap: 4, bulletIndent: 6 },
-  professional: { size: 10, spacing: 1.2, margin: 36, sectionGap: 14, itemGap: 6, bulletIndent: 6 },
+  compact: { size: 9, spacing: 1.05, margin: 24, sectionGap: 8, itemGap: 3, bulletIndent: 6 },
+  professional: { size: 9.5, spacing: 1.1, margin: 30, sectionGap: 10, itemGap: 5, bulletIndent: 6 },
   spacious: { size: 11, spacing: 1.4, margin: 48, sectionGap: 20, itemGap: 10, bulletIndent: 10 }
 };
 const initialStyle = { font: 'Arial', accent: '#000000', template: 'classic', pageSize: 'letter', preset: 'professional', ...layoutPresets.professional };
@@ -363,7 +363,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       ]);
       const pdfSections = {
         summary: () => { if (!resume.summary) return; heading('Professional summary'); text(resume.summary, style.size, 'normal', 0); },
-        experience: () => { const items = resume.experience.filter((item) => item.role || item.company || item.start || item.end || item.bullets.some(Boolean)); if (!items.length) return; heading('Experience'); items.forEach((item, itemIndex) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); const bullets = item.bullets.filter(Boolean); const locationHeight = item.location ? 9 * style.spacing + 2 : 0; const firstBulletHeight = bullets.length ? style.size * style.spacing : 0; ensureSpace(11 * style.spacing + 1 + locationHeight + firstBulletHeight); twoColumnText([item.role, item.company].filter(Boolean).join(' — '), dates, 11, 'bold', 1); text(item.location, 9, 'normal', 2); bullets.forEach((bullet, bulletIndex) => text(`• ${bullet}`, style.size, 'normal', bulletIndex < bullets.length - 1 ? 1 : 0, '#334155', style.bulletIndent)); if (itemIndex < items.length - 1) y += style.itemGap; }); },
+        experience: () => { const items = resume.experience.filter((item) => item.role || item.company || item.start || item.end || item.bullets.some(Boolean)); if (!items.length) return; heading('Experience'); items.forEach((item, itemIndex) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); const bullets = item.bullets.filter(Boolean); const locationHeight = item.location ? 9 * style.spacing + 2 : 0; const firstBulletHeight = bullets.length ? style.size * style.spacing : 0; ensureSpace(11 * style.spacing + 1 + locationHeight + firstBulletHeight); twoColumnText([item.role, item.company].filter(Boolean).join(' — '), dates, 11, 'bold', 1); text(item.location, 9, 'normal', 2); bullets.forEach((bullet) => text(`• ${bullet}`, style.size, 'normal', 0, '#334155', style.bulletIndent)); if (itemIndex < items.length - 1) y += style.itemGap; }); },
         skills: () => { if (!resume.skills) return; heading('Skills'); const rows = parseSkillRows(resume.skills); rows.forEach((row, index) => labeledText(row.category, row.skills, index < rows.length - 1 ? 1 : 0)); },
         education: () => { const items = resume.education.filter((item) => item.degree || item.school || item.year); if (!items.length) return; heading('Education'); items.forEach((item, index) => twoColumnText([item.degree, item.school].filter(Boolean).join(' — '), item.year, style.size, 'bold', index < items.length - 1 ? Math.max(3, style.itemGap / 2) : 0)); }
       };
