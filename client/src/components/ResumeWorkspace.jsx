@@ -284,13 +284,12 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         if (!value) return;
         pdf.setFont('helvetica', 'normal'); pdf.setFontSize(style.size); pdf.setTextColor('#334155');
         const lines = pdf.splitTextToSize(String(value), width);
-        lines.forEach((line, index) => {
-          if (y > pageHeight - margin) { pdf.addPage(); y = margin; }
-          const isLast = index === lines.length - 1;
-          pdf.text(line, margin, y, isLast ? undefined : { align: 'justify', maxWidth: width });
-          y += style.size * style.spacing;
-        });
-        y += 5;
+        const lineHeight = style.size * style.spacing;
+        ensureSpace(lines.length * lineHeight);
+        // jsPDF only justifies lines when the whole block is passed to one text() call —
+        // justifying line-by-line silently no-ops because each call only ever sees one line.
+        pdf.text(lines, margin, y, { align: 'justify', maxWidth: width });
+        y += lines.length * lineHeight + 5;
       };
       const twoColumnText = (left, right, size = style.size, weight = 'bold', gap = 2) => {
         if (!left && !right) return;
