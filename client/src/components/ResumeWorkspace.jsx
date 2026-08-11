@@ -19,10 +19,10 @@ function linkTarget(value = '', type = 'url') {
 
 const layoutPresets = {
   compact: { size: 9, spacing: 1.05, margin: 24, sectionGap: 8, itemGap: 3, bulletIndent: 6 },
-  professional: { size: 9.5, spacing: 1.1, margin: 30, sectionGap: 10, itemGap: 5, bulletIndent: 6 },
+  professional: { size: 10, spacing: 1.15, margin: 30, sectionGap: 6, itemGap: 4, bulletIndent: 6 },
   spacious: { size: 11, spacing: 1.4, margin: 48, sectionGap: 20, itemGap: 10, bulletIndent: 10 }
 };
-const initialStyle = { font: 'Arial', accent: '#000000', template: 'classic', pageSize: 'letter', preset: 'professional', ...layoutPresets.professional };
+const initialStyle = { font: 'Arial', accent: '#000000', template: 'classic', pageSize: 'letter', preset: 'professional', spacingModelVersion: 2, ...layoutPresets.professional };
 function getLayoutMetrics(style) {
   const page = style.pageSize === 'a4' ? { width: 595.28, height: 841.89 } : { width: 612, height: 792 };
   const bodySize = Math.min(11, Math.max(9.5, Number(style.size) || 10));
@@ -33,11 +33,11 @@ function getLayoutMetrics(style) {
     bodySize,
     spacing,
     lineHeight: bodySize * spacing,
-    sectionGap: Math.min(10, Math.max(6, Number(style.sectionGap) || 8)),
+    sectionGap: Math.min(6, Math.max(4, Number(style.sectionGap) || 6)),
     itemGap: Math.min(6, Math.max(3, Number(style.itemGap) || 4)),
     bulletIndent: style.bulletIndent,
     headingSize: 10,
-    headingHeight: 16,
+    headingHeight: 14,
     headingContentGap: 4,
   };
 }
@@ -203,7 +203,8 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       }
       const currentPreset = savedStyle.preset !== 'custom' ? layoutPresets[savedStyle.preset] : null;
       const merged = { ...initialStyle, ...savedStyle, ...currentPreset };
-      return { ...merged, size: Math.min(11, Math.max(9.5, Number(merged.size) || 10)), spacing: Math.min(1.22, Math.max(1.08, Number(merged.spacing) || 1.15)), margin: Math.min(36, Math.max(24, Number(merged.margin) || 30)), sectionGap: Math.min(10, Math.max(6, Number(merged.sectionGap) || 8)), itemGap: Math.min(6, Math.max(3, Number(merged.itemGap) || 4)), accent: savedStyle.accent === '#3730a3' ? '#000000' : savedStyle.accent };
+      const needsSpacingMigration = savedStyle.spacingModelVersion !== initialStyle.spacingModelVersion;
+      return { ...merged, spacingModelVersion: initialStyle.spacingModelVersion, size: needsSpacingMigration ? initialStyle.size : Math.min(11, Math.max(9.5, Number(merged.size) || 10)), spacing: needsSpacingMigration ? initialStyle.spacing : Math.min(1.22, Math.max(1.08, Number(merged.spacing) || 1.15)), margin: needsSpacingMigration ? initialStyle.margin : Math.min(36, Math.max(24, Number(merged.margin) || 30)), sectionGap: needsSpacingMigration ? initialStyle.sectionGap : Math.min(6, Math.max(4, Number(merged.sectionGap) || 6)), itemGap: needsSpacingMigration ? initialStyle.itemGap : Math.min(6, Math.max(3, Number(merged.itemGap) || 4)), accent: savedStyle.accent === '#3730a3' ? '#000000' : savedStyle.accent };
     } catch { return initialStyle; }
   });
   const [saved, setSaved] = useState(false);
