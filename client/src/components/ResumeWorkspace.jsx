@@ -18,24 +18,24 @@ function linkTarget(value = '', type = 'url') {
 }
 
 const layoutPresets = {
-  compact: { size: 9, spacing: 1.05, margin: 24, sectionGap: 8, itemGap: 3, bulletIndent: 6 },
-  professional: { size: 10, spacing: 1.15, margin: 30, sectionGap: 6, itemGap: 4, bulletIndent: 6 },
-  spacious: { size: 11, spacing: 1.4, margin: 48, sectionGap: 20, itemGap: 10, bulletIndent: 10 }
+  compact: { size: 9.5, spacing: 1.08, margin: 24, sectionGap: 7, itemGap: 4, bulletIndent: 12 },
+  professional: { size: 10, spacing: 1.15, margin: 36, sectionGap: 10, itemGap: 8, bulletIndent: 14 },
+  spacious: { size: 11, spacing: 1.22, margin: 48, sectionGap: 14, itemGap: 10, bulletIndent: 16 }
 };
-const initialStyle = { font: 'Arial', accent: '#000000', template: 'classic', pageSize: 'letter', preset: 'professional', spacingModelVersion: 2, ...layoutPresets.professional };
+const initialStyle = { font: 'Arial', accent: '#000000', template: 'classic', pageSize: 'letter', preset: 'professional', spacingModelVersion: 4, ...layoutPresets.professional };
 function getLayoutMetrics(style) {
   const page = style.pageSize === 'a4' ? { width: 595.28, height: 841.89 } : { width: 612, height: 792 };
   const bodySize = Math.min(11, Math.max(9.5, Number(style.size) || 10));
   const spacing = Math.min(1.22, Math.max(1.08, Number(style.spacing) || 1.15));
   return {
     page,
-    margin: Math.min(36, Math.max(24, Number(style.margin) || 30)),
+    margin: Math.min(54, Math.max(24, Number(style.margin) || 36)),
     bodySize,
     spacing,
     lineHeight: bodySize * spacing,
-    sectionGap: Math.min(6, Math.max(4, Number(style.sectionGap) || 6)),
-    itemGap: Math.min(6, Math.max(3, Number(style.itemGap) || 4)),
-    bulletIndent: style.bulletIndent,
+    sectionGap: Math.min(16, Math.max(6, Number(style.sectionGap) || 10)),
+    itemGap: Math.min(10, Math.max(3, Number(style.itemGap) || 5)),
+    bulletIndent: Math.min(18, Math.max(10, Number(style.bulletIndent) || 14)),
     headingSize: 10,
     headingHeight: 14,
     headingContentGap: 4,
@@ -182,7 +182,7 @@ function PreviewSectionContent({ section, resume, color, style: selectedStyle })
   const hasExperience = resume.experience.some((item) => item.role || item.company || item.start || item.end || item.bullets.some(Boolean));
   const hasEducation = resume.education.some((item) => item.degree || item.school || item.year);
   if (resume.imported && ((section === 'summary' && !resume.summary) || (section === 'experience' && !hasExperience) || (section === 'skills' && !resume.skills) || (section === 'education' && !hasEducation))) return null;
-  if (section === 'summary') return <ResumeSection title="Professional Summary" color={color} gap={style.sectionGap}><p className="break-words">{placeholder(resume.summary, 'Write a focused 2–4 line summary that highlights your experience, specialization, and strongest result.')}</p></ResumeSection>;
+  if (section === 'summary') return <ResumeSection title="Professional Summary" color={color} gap={style.sectionGap}><p className="break-words text-justify">{placeholder(resume.summary, 'Write a focused 2–4 line summary that highlights your experience, specialization, and strongest result.')}</p></ResumeSection>;
   if (section === 'experience') return <ResumeSection title="Experience" color={color} gap={style.sectionGap}>{resume.experience.map((item, index) => <div key={item.id} className="break-inside-avoid" style={{ marginBottom: index < resume.experience.length - 1 ? `${style.itemGap}px` : 0 }}><div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-bold text-slate-950"><span>{placeholder(item.role, 'ROLE TITLE')}{item.company ? ` · ${item.company}` : resume.imported ? '' : ' · COMPANY'}</span>{(item.start || item.end || !resume.imported) && <span className="whitespace-nowrap">{placeholder(item.start, 'START')} – {placeholder(item.end, 'END')}</span>}</div>{item.bullets.length > 0 && <ul className="mt-0.5 list-disc" style={{ paddingLeft: `${style.bulletIndent}px` }}>{item.bullets.map((bullet, bulletIndex) => <li key={bulletIndex} className="break-words">{placeholder(bullet, 'Describe what you achieved, how you did it, and the measurable result.')}</li>)}</ul>}</div>)}</ResumeSection>;
   if (section === 'skills') return <ResumeSection title="Skills" color={color} gap={style.sectionGap}><SkillsContent value={resume.skills} fallback={resume.imported ? '' : 'Add relevant skills separated by commas.'} /></ResumeSection>;
   if (section === 'education') return <ResumeSection title="Education" color={color} gap={style.sectionGap}>{resume.education.map((item, index) => <div key={item.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5 font-bold" style={{ marginBottom: index < resume.education.length - 1 ? `${Math.max(2, style.itemGap / 2)}px` : 0 }}><span className="min-w-0 flex-1 break-words">{placeholder(item.degree, 'DEGREE')}{item.school ? ` · ${item.school}` : resume.imported ? '' : ' · INSTITUTION'}</span><span className="whitespace-nowrap">{placeholder(item.year, 'YEAR')}</span></div>)}</ResumeSection>;
@@ -212,7 +212,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       const currentPreset = savedStyle.preset !== 'custom' ? layoutPresets[savedStyle.preset] : null;
       const merged = { ...initialStyle, ...savedStyle, ...currentPreset };
       const needsSpacingMigration = savedStyle.spacingModelVersion !== initialStyle.spacingModelVersion;
-      return { ...merged, spacingModelVersion: initialStyle.spacingModelVersion, size: needsSpacingMigration ? initialStyle.size : Math.min(11, Math.max(9.5, Number(merged.size) || 10)), spacing: needsSpacingMigration ? initialStyle.spacing : Math.min(1.22, Math.max(1.08, Number(merged.spacing) || 1.15)), margin: needsSpacingMigration ? initialStyle.margin : Math.min(36, Math.max(24, Number(merged.margin) || 30)), sectionGap: needsSpacingMigration ? initialStyle.sectionGap : Math.min(6, Math.max(4, Number(merged.sectionGap) || 6)), itemGap: needsSpacingMigration ? initialStyle.itemGap : Math.min(6, Math.max(3, Number(merged.itemGap) || 4)), accent: savedStyle.accent === '#3730a3' ? '#000000' : savedStyle.accent };
+      return { ...merged, spacingModelVersion: initialStyle.spacingModelVersion, size: needsSpacingMigration ? initialStyle.size : Math.min(11, Math.max(9.5, Number(merged.size) || 10)), spacing: needsSpacingMigration ? initialStyle.spacing : Math.min(1.22, Math.max(1.08, Number(merged.spacing) || 1.15)), margin: needsSpacingMigration ? initialStyle.margin : Math.min(54, Math.max(24, Number(merged.margin) || 36)), sectionGap: needsSpacingMigration ? initialStyle.sectionGap : Math.min(16, Math.max(6, Number(merged.sectionGap) || 10)), itemGap: needsSpacingMigration ? initialStyle.itemGap : Math.min(10, Math.max(3, Number(merged.itemGap) || 5)), bulletIndent: needsSpacingMigration ? initialStyle.bulletIndent : Math.min(18, Math.max(10, Number(merged.bulletIndent) || 14)), accent: savedStyle.accent === '#3730a3' ? '#000000' : savedStyle.accent };
     } catch { return initialStyle; }
   });
   const [saved, setSaved] = useState(false);
@@ -236,12 +236,11 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
   }, [resume]);
 
   const atsReadiness = useMemo(() => {
-    const summaryWords = resume.summary.trim().split(/\s+/).filter(Boolean).length;
     const bullets = resume.experience.flatMap((item) => item.bullets).filter(Boolean);
     const checks = [
       { passed: Boolean(resume.name && resume.role), label: 'Add your name and exact target job title' },
       { passed: Boolean(resume.email && resume.phone && resume.location), label: 'Complete email, phone, and location' },
-      { passed: summaryWords >= 35 && summaryWords <= 100, label: 'Keep the summary between 35 and 100 words' },
+      { passed: Boolean(resume.summary.trim()), label: 'Add a focused professional summary' },
       { passed: bullets.length >= 3, label: 'Add at least three achievement bullets' },
       { passed: bullets.some((bullet) => /\d|%|\$/.test(bullet)), label: 'Include a truthful number or measurable result' },
       { passed: Boolean(resume.skills.trim()), label: 'List job-relevant skills using standard names' },
@@ -319,6 +318,40 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         pdf.setFont(pdfFont, weight); pdf.setFontSize(size); pdf.setTextColor(color);
         const lines = measureLines(value, size, indent, weight);
         lines.forEach((line) => { ensureSpace(size * layout.spacing); pdf.text(line, margin + indent, y); y += size * layout.spacing; }); y += gap;
+      };
+      const justifiedText = (value, gap = 0) => {
+        const lines = measureLines(value);
+        pdf.setFont(pdfFont, 'normal'); pdf.setFontSize(layout.bodySize); pdf.setTextColor('#334155');
+        lines.forEach((line, index) => {
+          ensureSpace(layout.lineHeight);
+          const isLastLine = index === lines.length - 1;
+          const words = String(line).trim().split(/\s+/).filter(Boolean);
+          if (isLastLine || words.length < 2) {
+            pdf.text(line, margin, y);
+          } else {
+            const wordsWidth = words.reduce((total, word) => total + pdf.getTextWidth(word), 0);
+            const wordGap = Math.max(pdf.getTextWidth(' '), (width - wordsWidth) / (words.length - 1));
+            let wordX = margin;
+            words.forEach((word) => {
+              pdf.text(word, wordX, y);
+              wordX += pdf.getTextWidth(word) + wordGap;
+            });
+          }
+          y += layout.lineHeight;
+        });
+        y += gap;
+      };
+      const bulletText = (value, gap = 1) => {
+        if (!value) return;
+        pdf.setFont(pdfFont, 'normal'); pdf.setFontSize(layout.bodySize); pdf.setTextColor('#334155');
+        const lines = pdf.splitTextToSize(String(value), width - layout.bulletIndent);
+        lines.forEach((line, index) => {
+          ensureSpace(layout.lineHeight);
+          if (index === 0) pdf.text('•', margin + 2, y);
+          pdf.text(line, margin + layout.bulletIndent, y);
+          y += layout.lineHeight;
+        });
+        y += gap;
       };
       const heading = (value, followingHeight = layout.lineHeight) => {
         const broke = ensureSpace(layout.sectionGap + layout.headingHeight + layout.headingContentGap + followingHeight);
@@ -405,13 +438,21 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         { value: resume.github ? 'GitHub' : '', url: linkTarget(resume.github) },
         { value: resume.website, url: linkTarget(resume.website) }
       ]);
+      const orderedSections = resume.sectionOrder || initialResume.sectionOrder;
+      const educationItems = resume.education.filter((item) => item.degree || item.school || item.year);
+      const educationBlockHeight = () => layout.sectionGap + layout.headingHeight + educationItems.reduce((height, item) => {
+        pdf.setFont(pdfFont, 'bold'); pdf.setFontSize(layout.bodySize);
+        const rightWidth = item.year ? pdf.getTextWidth(item.year) + 12 : 0;
+        const study = [item.degree, item.school].filter(Boolean).join(' — ');
+        return height + Math.max(1, pdf.splitTextToSize(study, Math.max(120, width - rightWidth)).length) * layout.lineHeight + Math.max(3, layout.itemGap / 2);
+      }, 0);
       const pdfSections = {
-        summary: () => { if (!resume.summary) return; const summaryHeight = measureLines(resume.summary).length * layout.lineHeight; heading('Professional summary', summaryHeight); text(resume.summary, layout.bodySize, 'normal', 0); },
-        experience: () => { const items = resume.experience.filter((item) => item.role || item.company || item.location || item.start || item.end || item.bullets.some(Boolean)); if (!items.length) return; const itemHeight = (item) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); const title = [item.role, item.company].filter(Boolean).join(' — '); pdf.setFont(pdfFont, 'bold'); pdf.setFontSize(layout.bodySize); const dateWidth = dates ? pdf.getTextWidth(dates) + 12 : 0; return (pdf.splitTextToSize(title, Math.max(120, width - dateWidth)).length * layout.lineHeight) + (item.location ? 9 * layout.spacing + 2 : 0) + item.bullets.filter(Boolean).reduce((height, bullet) => height + (measureLines(`• ${bullet}`, layout.bodySize, layout.bulletIndent).length * layout.lineHeight), 0); }; heading('Experience', itemHeight(items[0])); items.forEach((item, itemIndex) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); const title = [item.role, item.company].filter(Boolean).join(' — '); const bullets = item.bullets.filter(Boolean); ensureSpace(itemHeight(item)); twoColumnText(title, dates, layout.bodySize, 'bold', 1); text(item.location, 9, 'normal', 2); bullets.forEach((bullet) => text(`• ${bullet}`, layout.bodySize, 'normal', 0, '#334155', layout.bulletIndent)); if (itemIndex < items.length - 1) y += layout.itemGap; }); },
-        skills: () => { if (!resume.skills) return; const rows = parseSkillRows(resume.skills); const firstRowHeight = rows[0] ? Math.max(layout.lineHeight, measureLines(`${rows[0].category ? `${rows[0].category}: ` : ''}${rows[0].skills}`).length * layout.lineHeight) : layout.lineHeight; heading('Skills', firstRowHeight); rows.forEach((row, index) => labeledText(row.category, row.skills, index < rows.length - 1 ? 1 : 0)); },
-        education: () => { const items = resume.education.filter((item) => item.degree || item.school || item.year); if (!items.length) return; heading('Education', layout.lineHeight); items.forEach((item, index) => twoColumnText([item.degree, item.school].filter(Boolean).join(' — '), item.year, layout.bodySize, 'bold', index < items.length - 1 ? Math.max(3, layout.itemGap / 2) : 0)); }
+        summary: () => { if (!resume.summary) return; const summaryHeight = measureLines(resume.summary).length * layout.lineHeight; heading('Professional summary', summaryHeight); justifiedText(resume.summary); },
+        experience: () => { const items = resume.experience.filter((item) => item.role || item.company || item.location || item.start || item.end || item.bullets.some(Boolean)); if (!items.length) return; const itemHeight = (item) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); const title = [item.role, item.company].filter(Boolean).join(' — '); pdf.setFont(pdfFont, 'bold'); pdf.setFontSize(layout.bodySize); const dateWidth = dates ? pdf.getTextWidth(dates) + 12 : 0; const bullets = item.bullets.filter(Boolean); return (pdf.splitTextToSize(title, Math.max(120, width - dateWidth)).length * layout.lineHeight) + (item.location ? 9 * layout.spacing + 2 : 0) + (bullets.length ? 3 : 0) + bullets.reduce((height, bullet) => height + (pdf.splitTextToSize(String(bullet), width - layout.bulletIndent).length * layout.lineHeight) + 1, 0); }; const orphanLimit = Math.max(120, usablePageHeight * 0.18); heading('Experience', Math.min(itemHeight(items[0]), orphanLimit)); items.forEach((item, itemIndex) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); const title = [item.role, item.company].filter(Boolean).join(' — '); const bullets = item.bullets.filter(Boolean); const requiredHeight = itemHeight(item); const remainingHeight = pageHeight - margin - y; if (requiredHeight > remainingHeight && remainingHeight < orphanLimit) ensureSpace(requiredHeight); twoColumnText(title, dates, layout.bodySize, 'bold', bullets.length ? 3 : 1); text(item.location, 9, 'normal', bullets.length ? 2 : 0); bullets.forEach((bullet) => bulletText(bullet)); if (itemIndex < items.length - 1) y += layout.itemGap; }); },
+        skills: () => { if (!resume.skills) return; const rows = parseSkillRows(resume.skills); const skillsHeight = layout.sectionGap + layout.headingHeight + rows.reduce((height, row) => height + Math.max(1, measureLines(`${row.category ? `${row.category}: ` : ''}${row.skills}`).length) * layout.lineHeight + 1, 0); const skillsIndex = orderedSections.indexOf('skills'); const educationFollows = orderedSections.slice(skillsIndex + 1).find((section) => section === 'education' || pdfSections[section] || resume.customSections?.some((item) => item.id === section)) === 'education'; const groupedHeight = skillsHeight + (educationFollows && educationItems.length ? educationBlockHeight() : 0); if (groupedHeight <= usablePageHeight && y + groupedHeight > pageHeight - margin) { pdf.addPage(); y = margin; } const firstRowHeight = rows[0] ? Math.max(layout.lineHeight, measureLines(`${rows[0].category ? `${rows[0].category}: ` : ''}${rows[0].skills}`).length * layout.lineHeight) : layout.lineHeight; heading('Skills', firstRowHeight); rows.forEach((row, index) => labeledText(row.category, row.skills, index < rows.length - 1 ? 1 : 0)); },
+        education: () => { if (!educationItems.length) return; heading('Education', layout.lineHeight); educationItems.forEach((item, index) => twoColumnText([item.degree, item.school].filter(Boolean).join(' — '), item.year, layout.bodySize, 'bold', index < educationItems.length - 1 ? Math.max(3, layout.itemGap / 2) : 0)); }
       };
-      (resume.sectionOrder || initialResume.sectionOrder).forEach((section) => {
+      orderedSections.forEach((section) => {
         if (pdfSections[section]) { pdfSections[section](); return; }
         const custom = resume.customSections?.find((item) => item.id === section);
         if (custom?.content) {
@@ -438,7 +479,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       const bodySize = Math.round(layout.bodySize * 2);
       const children = [];
       const paragraph = (value, options = {}) => new Paragraph({
-        alignment: options.center ? AlignmentType.CENTER : AlignmentType.LEFT,
+        alignment: options.center ? AlignmentType.CENTER : options.justify ? AlignmentType.JUSTIFIED : AlignmentType.LEFT,
         spacing: { before: options.before, after: options.after ?? 0, line: Math.round(layout.spacing * 240) },
         tabStops: options.tabs ? [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }] : undefined,
         bullet: options.bullet ? { level: 0 } : undefined,
@@ -461,7 +502,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       ]) }));
       const sectionHeading = (title, preserveCase = false) => children.push(paragraph(preserveCase ? title : title.toUpperCase(), { heading: true, bold: true, size: Math.round(layout.headingSize * 2), before: Math.round(layout.sectionGap * 20), after: Math.round(layout.headingContentGap * 20), keepNext: true }));
       const wordSections = {
-        summary: () => { if (!resume.summary) return; sectionHeading('Professional Summary'); children.push(paragraph(resume.summary, { after: 0 })); },
+        summary: () => { if (!resume.summary) return; sectionHeading('Professional Summary'); children.push(paragraph(resume.summary, { after: 0, justify: true })); },
         experience: () => {
           const items = resume.experience.filter((item) => item.role || item.company || item.location || item.start || item.end || item.bullets.some(Boolean));
           if (!items.length) return;
@@ -473,7 +514,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
             const hasFollowingItem = itemIndex < items.length - 1;
             children.push(paragraph(`${title}${dates ? `\t${dates}` : ''}`, { bold: true, tabs: true, after: bullets.length ? 0 : hasFollowingItem ? Math.round(layout.itemGap * 20) : 0, keepNext: bullets.length > 0 }));
             if (item.location) children.push(paragraph(item.location, { size: 18, after: bullets.length ? 0 : (hasFollowingItem ? Math.round(layout.itemGap * 20) : 0), keepNext: bullets.length > 0 }));
-            bullets.forEach((bullet, index) => children.push(paragraph(bullet, { bullet: true, keepNext: index < bullets.length - 1, after: index === bullets.length - 1 ? (hasFollowingItem ? Math.round(layout.itemGap * 20) : 0) : 0 })));
+            bullets.forEach((bullet, index) => children.push(paragraph(bullet, { bullet: true, keepNext: false, after: index === bullets.length - 1 ? (hasFollowingItem ? Math.round(layout.itemGap * 20) : 0) : 0 })));
           });
         },
         skills: () => {
@@ -540,7 +581,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       <div className="grid gap-4">
         <Block number="1" title="Name and target role" hint="Lead with the role you are applying for."><div className="grid gap-3 sm:grid-cols-2"><Field label="Full name" value={resume.name} onChange={(e) => update('name', e.target.value)} placeholder="Jordan Lee" /><Field label="Target role" value={resume.role} onChange={(e) => update('role', e.target.value)} placeholder="Product Designer" /></div></Block>
         <Block number="2" title="Contact information" hint="Links stay clickable in the preview, PDF, and Word exports."><div className="grid gap-3 sm:grid-cols-2"><Field label="Email" type="email" value={resume.email} onChange={(e) => update('email', e.target.value)} placeholder="jordan@email.com" /><Field label="Phone" value={resume.phone} onChange={(e) => update('phone', e.target.value)} placeholder="(555) 000-0000" /><Field label="City, State" value={resume.location} onChange={(e) => update('location', e.target.value)} placeholder="Austin, TX" /><Field label="LinkedIn" value={resume.linkedin} onChange={(e) => update('linkedin', e.target.value)} placeholder="linkedin.com/in/jordan" /><Field label="GitHub" value={resume.github} onChange={(e) => update('github', e.target.value)} placeholder="github.com/jordan" /><Field label="Portfolio / website" value={resume.website} onChange={(e) => update('website', e.target.value)} placeholder="jordan.design" /></div></Block>
-        <Block number="3" title="Professional summary" hint="In 35–100 words, say what you do, your experience, strongest skills, and one clear result."><textarea rows="5" value={resume.summary} maxLength="600" onChange={(e) => update('summary', e.target.value)} placeholder="Example: Software developer with 3 years of experience building React applications and reusable interfaces. Improved [real result] by [number] through [specific action]." className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-6 outline-none focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100" /><div className="mt-2 flex justify-between gap-3 text-xs text-slate-500"><span>Use skills that also appear in your experience or projects.</span><span className="shrink-0">{resume.summary.trim().split(/\s+/).filter(Boolean).length} words</span></div></Block>
+        <Block number="3" title="Professional summary" hint="Describe what you do, your experience, strongest skills, and a clear result."><textarea rows="5" value={resume.summary} onChange={(e) => update('summary', e.target.value)} placeholder="Example: Software developer experienced in building React applications and reusable interfaces. Improved [real result] by [number] through [specific action]." className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-6 outline-none focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100" /><p className="mt-2 text-xs text-slate-500">Use skills that also appear in your experience or projects.</p></Block>
         <Block number="4" title="Experience and bullet points" hint="Start bullets with an action and finish with a measurable result."><div className="grid gap-4">{resume.experience.map((item, itemIndex) => <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-sm font-extrabold">Experience {itemIndex + 1}</p>{resume.experience.length > 1 && <button type="button" onClick={() => setResume((current) => ({ ...current, experience: current.experience.filter((entry) => entry.id !== item.id) }))} className="text-xs font-bold text-rose-600">Remove</button>}</div><div className="grid gap-3 sm:grid-cols-2"><Field label="Role" value={item.role} onChange={(e) => updateExperience(item.id, 'role', e.target.value)} placeholder="Senior Designer" /><Field label="Company" value={item.company} onChange={(e) => updateExperience(item.id, 'company', e.target.value)} placeholder="Company name" /><Field label="Start" value={item.start} onChange={(e) => updateExperience(item.id, 'start', e.target.value)} placeholder="Jan 2022" /><Field label="End" value={item.end} onChange={(e) => updateExperience(item.id, 'end', e.target.value)} placeholder="Present" /></div><div className="mt-3 grid gap-2">{item.bullets.map((bullet, bulletIndex) => <div key={bulletIndex} className="flex gap-2"><span className="mt-3 text-indigo-500">•</span><input value={bullet} onChange={(e) => updateBullet(item.id, bulletIndex, e.target.value)} placeholder="Improved [metric] by [number] through [action]" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100" />{item.bullets.length > 1 && <button aria-label="Remove bullet" type="button" onClick={() => updateExperience(item.id, 'bullets', item.bullets.filter((_, index) => index !== bulletIndex))} className="px-2 text-rose-500">×</button>}</div>)}</div><button type="button" onClick={() => updateExperience(item.id, 'bullets', [...item.bullets, ''])} className="mt-3 text-xs font-bold text-indigo-600">+ Add bullet point</button></div>)}</div><button type="button" onClick={() => setResume((current) => ({ ...current, experience: [...current.experience, { id: makeId(), role: '', company: '', location: '', start: '', end: '', bullets: [''] }] }))} className="mt-4 w-full rounded-xl border border-dashed border-indigo-300 py-3 text-sm font-bold text-indigo-600 hover:bg-indigo-50">+ Add another experience</button></Block>
         <Block number="5" title="Skills" hint="Use one category per line so recruiters can scan your strengths quickly."><textarea rows="7" value={resume.skills} onChange={(e) => update('skills', e.target.value)} placeholder={'Design: Figma, prototyping, design systems\nResearch: User interviews, usability testing\nTools: Jira, Miro, Adobe Creative Suite'} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-6 outline-none focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100" /><p className="mt-2 text-xs leading-5 text-slate-500"><span className="font-bold text-slate-700">Recommended format:</span> Category: skill, skill, skill. Put each category on a new line and prioritize the categories most relevant to the job.</p></Block>
         <Block number="6" title="Education" hint="Include your degree, institution, and graduation year.">{resume.education.map((item, index) => <div key={item.id} className="mb-3 grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-3"><Field label={`Degree ${index + 1}`} value={item.degree} onChange={(e) => updateEducation(item.id, 'degree', e.target.value)} placeholder="B.S. Design" /><Field label="School" value={item.school} onChange={(e) => updateEducation(item.id, 'school', e.target.value)} placeholder="State University" /><Field label="Year" value={item.year} onChange={(e) => updateEducation(item.id, 'year', e.target.value)} placeholder="2022" /></div>)}<button type="button" onClick={() => setResume((current) => ({ ...current, education: [...current.education, { id: makeId(), degree: '', school: '', year: '' }] }))} className="text-xs font-bold text-indigo-600">+ Add education</button></Block>
