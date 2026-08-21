@@ -36,7 +36,13 @@ export default function AtsCheckerPage() {
       setUploadedResumeFile(file);
       setEditorResumeData(data.resume?.editorData ?? null);
     } catch (requestError) {
-      setError(requestError.response?.data?.error ?? 'ATS check failed. Please try again.');
+      const status = requestError.response?.status;
+      const apiError = requestError.response?.data?.error;
+      setError(
+        status === 404
+          ? 'ATS Checker API is not available on the deployed server yet. Deploy or restart the updated backend, then try again.'
+          : apiError ?? 'ATS check failed. Please try again.'
+      );
     } finally { setChecking(false); }
   }
 
