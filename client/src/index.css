@@ -163,3 +163,14 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
 .article-card:nth-child(3n+3) .article-card-media { background: linear-gradient(135deg, var(--accent-solid-hover), var(--accent-1)); }
 .article-card:hover { transform: translateY(-10px) rotate(.25deg); border-color: var(--accent-solid); box-shadow: 0 24px 55px color-mix(in srgb, var(--accent-solid) 22%, transparent); }
 @media (prefers-reduced-motion: reduce) { .article-card { transition: none; } .article-card:hover { transform: none; } }
+
+@keyframes hero-card-float { 0%, 100% { transform: translate3d(0,0,28px) rotateX(2deg) rotateY(-4deg); } 50% { transform: translate3d(0,-14px,46px) rotateX(-2deg) rotateY(3deg); } }
+.landing-hero-3d { background-color: #020617; background-size: cover; background-position: center; perspective: 1100px; transform-style: preserve-3d; }
+.landing-hero-wash { background: linear-gradient(90deg, rgba(2,6,23,.98) 0%, rgba(2,6,23,.9) 38%, rgba(2,6,23,.34) 68%, rgba(2,6,23,.08) 100%), linear-gradient(135deg, color-mix(in srgb, var(--accent-1) 18%, transparent), transparent 48%); }
+.landing-depth-grid { opacity: .18; background-image: linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px); background-size: 48px 48px; mask-image: linear-gradient(to right, black, transparent 60%); transform: rotateX(68deg) translateY(62%) scale(1.4); transform-origin: bottom; }
+.hero-float { position: absolute; display: flex; align-items: center; gap: .65rem; border: 1px solid rgba(255,255,255,.22); border-radius: 1rem; background: linear-gradient(135deg, rgba(15,23,42,.78), rgba(255,255,255,.12)); padding: .85rem 1rem; color: white; box-shadow: 0 22px 50px rgba(2,6,23,.45), inset 0 1px rgba(255,255,255,.22); backdrop-filter: blur(14px); animation: hero-card-float 6s ease-in-out infinite; transform-style: preserve-3d; }
+.hero-float-score { right: 8%; top: 14%; display: block; min-width: 8rem; animation-delay: -1s; }
+.hero-float-match { right: 5%; bottom: 28%; animation-delay: -3s; }
+.hero-float-export { left: 8%; bottom: 12%; animation-delay: -4.5s; }
+@media (max-width: 1023px) { .landing-hero-3d { background-position: 66% center; } .landing-hero-wash { background: linear-gradient(90deg, rgba(2,6,23,.97), rgba(2,6,23,.76)); } }
+@media (prefers-reduced-motion: reduce) { .hero-float { animation: none; } }
