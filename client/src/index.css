@@ -134,3 +134,9 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
 .auth-orb-two { width: 22rem; height: 22rem; right: -6rem; top: -8rem; background: #6366f1; animation-delay: -4s; }
 .auth-card { animation: auth-arrive .65s cubic-bezier(.2,.8,.2,1) both; }
 @media (prefers-reduced-motion: reduce) { .auth-orb, .auth-card { animation: none; } }
+
+.service-card { position: relative; transition: transform .32s cubic-bezier(.2,.8,.2,1), box-shadow .32s ease, border-color .32s ease; }
+.service-card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; box-shadow: inset 0 0 0 1px rgba(99,102,241,.28); transition: opacity .32s ease; }
+.service-card:hover { transform: translateY(-8px); box-shadow: 0 22px 45px rgba(15,23,42,.14); }
+.service-card:hover::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .service-card, .service-card::after { transition: none; } .service-card:hover { transform: none; } }

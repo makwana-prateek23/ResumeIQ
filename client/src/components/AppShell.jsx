@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import StepNav from './StepNav.jsx';
 import ThemePicker from './ThemePicker.jsx';
 import useAuth from '../hooks/useAuth.js';
 
@@ -12,18 +11,10 @@ function AppShell() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
 
-  function requireResume(event) {
-    if (resumeUploaded || localStorage.getItem('resumeiq-builder-v1')) return;
-    event.preventDefault();
-    setUploadMessage('Please upload a resume before using Edit & Format.');
-    navigate('/');
-  }
-
   return <div className="min-h-screen bg-[#f5f7fb] text-slate-900">
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-3 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
         <NavLink to="/" className="flex items-center gap-3 no-underline"><span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-(--accent-1) to-(--accent-2) font-black text-white shadow-lg shadow-indigo-200">R</span><div><p className="font-extrabold tracking-tight">ResumeIQ</p><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Resume workspace</p></div></NavLink>
-        <StepNav resumeUploaded={resumeUploaded} onLockedClick={requireResume} />
         <div className="flex items-center gap-3"><ThemePicker />{isAuthenticated ? <div className="flex items-center gap-2"><span className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-indigo-100 text-xs font-black text-indigo-700">{user.avatarUrl ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" /> : user.name?.slice(0, 1).toUpperCase()}</span><span className="hidden max-w-28 truncate text-xs font-bold text-slate-700 xl:block">{user.name}</span><button onClick={() => { logout(); navigate('/'); }} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700">Sign out</button></div> : <div className="flex items-center gap-2"><NavLink to="/login" className="rounded-lg px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-100">Sign in</NavLink><NavLink to="/signup" className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white transition hover:-translate-y-0.5">Sign up</NavLink></div>}</div>
       </div>
     </header>
