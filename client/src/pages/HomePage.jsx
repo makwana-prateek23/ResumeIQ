@@ -14,6 +14,30 @@ const usCheckLabels = {
   noSensitivePersonalDetails: 'No unnecessary sensitive personal details'
 };
 
+function getUsRecruitingResult(result) {
+  if (!result) return null;
+  if (result.usRecruiting) return result.usRecruiting;
+  const search = result.searchability?.checks ?? {};
+  const quality = result.resumeQuality ?? {};
+  const qualityChecks = quality.checks ?? {};
+  const checks = {
+    contactBasics: Boolean(search.email && search.phone),
+    standardSections: Boolean(search.experienceSection && search.educationSection),
+    datedExperience: Boolean(search.dates),
+    quantifiedImpact: (quality.measurableResults ?? 0) >= 2,
+    actionOrientedBullets: Boolean(qualityChecks.actionOrientedBullets ?? qualityChecks.scannableBullets),
+    conciseBullets: Boolean(qualityChecks.conciseBullets ?? qualityChecks.scannableBullets),
+    professionalLink: Boolean(search.professionalLink),
+    noSensitivePersonalDetails: true
+  };
+  return {
+    score: Math.round((Object.values(checks).filter(Boolean).length / Object.keys(checks).length) * 100),
+    checks,
+    standard: 'US private-sector recruiter readiness',
+    fallback: true
+  };
+}
+
 function ScoreBar({ label, score }) {
   return <div><div className="mb-2 flex justify-between text-sm font-semibold text-slate-700"><span>{label}</span><span>{score}%</span></div><div className="h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-(--accent-1) to-(--accent-2) transition-all duration-700" style={{ width: `${score}%` }} /></div></div>;
 }
@@ -125,9 +149,10 @@ function HomePage() {
       addText('ResumeIQ Role Match Report', 20, 'bold', 12);
       if (result.roleSuitability?.targetRole) addText(`Target role: ${result.roleSuitability.targetRole}`, 12, 'bold');
       addText(`Role suitability: ${result.roleSuitability?.score ?? result.overallScore}%`, 15, 'bold', 12);
-      if (result.usRecruiting) {
-        addText(`U.S. recruiter readiness: ${result.usRecruiting.score}%`, 13, 'bold', 6);
-        Object.entries(result.usRecruiting.checks).forEach(([key, passed]) => addText(`${passed ? 'Pass' : 'Improve'}: ${usCheckLabels[key] ?? key}`, 10, 'normal', 2));
+      const usRecruiting = getUsRecruitingResult(result);
+      if (usRecruiting) {
+        addText(`U.S. recruiter readiness: ${usRecruiting.score}%`, 13, 'bold', 6);
+        Object.entries(usRecruiting.checks).forEach(([key, passed]) => addText(`${passed ? 'Pass' : 'Improve'}: ${usCheckLabels[key] ?? key}`, 10, 'normal', 2));
       }
       Object.entries(result.breakdown).forEach(([key, score]) => addText(`${scoreLabels[key] ?? key}: ${score}%`));
       addText('Matched technical keywords', 13, 'bold');
@@ -165,6 +190,8 @@ function HomePage() {
     }
   }
 
+  const usRecruiting = getUsRecruitingResult(result);
+
   return <main className="relative min-h-screen overflow-hidden bg-[#f5f7fb] text-slate-900">
     <div className="pointer-events-none absolute -left-40 -top-40 h-96 w-96 rounded-full bg-cyan-200/40 blur-3xl" /><div className="pointer-events-none absolute right-0 top-64 h-96 w-96 rounded-full bg-indigo-200/40 blur-3xl" />
     <div className="relative z-10 mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
@@ -185,7 +212,7 @@ function HomePage() {
         {!result ? <section className="grid min-h-[520px] place-items-center rounded-3xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-[0_24px_70px_-40px_rgba(15,23,42,0.35)] backdrop-blur"><div className="max-w-md"><div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-br from-indigo-100 to-cyan-100 text-3xl font-black text-indigo-600">%</div><h2 className="mt-6 text-2xl font-extrabold">Your match report starts here</h2><p className="mt-3 leading-7 text-slate-500">Upload a resume and job description to see technical keyword coverage, experience alignment, missing terms, and prioritized resume updates.</p><div className="mt-7 grid grid-cols-3 gap-3 text-xs font-semibold text-slate-500"><span className="rounded-xl bg-slate-50 p-3">Keyword match</span><span className="rounded-xl bg-slate-50 p-3">Experience</span><span className="rounded-xl bg-slate-50 p-3">Action plan</span></div></div></section> :
         <div aria-live="polite" className="print-report grid gap-6">
           <Panel title="ATS and recruiter readiness"><div className="grid gap-4 sm:grid-cols-3">{[["ATS keyword match", result.atsScore], ["Recruiter-ready evidence", result.recruiterReadinessScore], ["Mandatory coverage", result.mandatoryCoverage]].map(([label, score]) => <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50 p-5"><p className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p><p className="mt-2 text-3xl font-black text-slate-900">{score}%</p><div className="mt-3 h-2 overflow-hidden rounded-full bg-white"><div className="h-full rounded-full bg-gradient-to-r from-(--accent-2) to-(--accent-1)" style={{ width: `${score}%` }} /></div></div>)}</div><p className="mt-4 text-xs leading-5 text-slate-500">ATS match measures terminology coverage. Recruiter readiness gives the most credit to dated experience and project evidence; summary and skills-only mentions receive less credit.</p></Panel>
-          {result.usRecruiting && <Panel title="U.S. Resume ATS Checker" className="border-cyan-200 bg-gradient-to-br from-white to-cyan-50/50"><div className="grid gap-6 lg:grid-cols-[180px_1fr]"><div className="rounded-2xl bg-slate-950 p-5 text-white"><p className="text-xs font-bold uppercase tracking-[0.16em] text-cyan-300">Recruiter readiness</p><p className="mt-3 text-5xl font-black">{result.usRecruiting.score}%</p><p className="mt-2 text-xs leading-5 text-slate-300">U.S. private-sector resume conventions</p></div><div className="grid gap-2 sm:grid-cols-2">{Object.entries(result.usRecruiting.checks).map(([key, passed]) => <div key={key} className={`flex items-center gap-3 rounded-xl border p-3 ${passed ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-950'}`}><span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10px] font-black ${passed ? 'bg-emerald-200 text-emerald-800' : 'bg-amber-200 text-amber-900'}`}>{passed ? 'OK' : 'FIX'}</span><span className="text-xs font-bold leading-5">{usCheckLabels[key] ?? key}</span></div>)}</div></div><p className="mt-4 text-xs leading-5 text-slate-500">This review checks resume presentation and evidence only. It does not score protected personal characteristics or request immigration documents.</p></Panel>}
+          {usRecruiting && <Panel title="U.S. Resume ATS Checker" className="border-cyan-200 bg-gradient-to-br from-white to-cyan-50/50"><div className="grid gap-6 lg:grid-cols-[180px_1fr]"><div className="rounded-2xl bg-slate-950 p-5 text-white"><p className="text-xs font-bold uppercase tracking-[0.16em] text-cyan-300">Recruiter readiness</p><p className="mt-3 text-5xl font-black">{usRecruiting.score}%</p><p className="mt-2 text-xs leading-5 text-slate-300">U.S. private-sector resume conventions</p></div><div className="grid gap-2 sm:grid-cols-2">{Object.entries(usRecruiting.checks).map(([key, passed]) => <div key={key} className={`flex items-center gap-3 rounded-xl border p-3 ${passed ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-950'}`}><span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10px] font-black ${passed ? 'bg-emerald-200 text-emerald-800' : 'bg-amber-200 text-amber-900'}`}>{passed ? 'OK' : 'FIX'}</span><span className="text-xs font-bold leading-5">{usCheckLabels[key] ?? key}</span></div>)}</div></div>{usRecruiting.fallback && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">Using compatibility scoring. Restart the server to enable the full U.S. recruiting analysis.</p>}<p className="mt-4 text-xs leading-5 text-slate-500">This review checks resume presentation and evidence only. It does not score protected personal characteristics or request immigration documents.</p></Panel>}
           <div className="no-print flex flex-wrap justify-end gap-2"><Link to="/resume" className="rounded-xl bg-(--accent-solid) px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-(--accent-solid-hover)">Edit this resume →</Link><button type="button" onClick={downloadPdfReport} disabled={isDownloadingPdf} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60">{isDownloadingPdf ? 'Creating PDF...' : 'Download review PDF'}</button></div>
           <Panel title="Role suitability"><div className="grid items-center gap-7 sm:grid-cols-[170px_1fr]"><div className="mx-auto grid h-40 w-40 place-items-center rounded-full p-3" style={{ background: `conic-gradient(var(--accent-solid) ${result.roleSuitability?.score ?? result.overallScore}%, #e2e8f0 0)` }}><div className="grid h-full w-full place-items-center rounded-full bg-white text-center"><div><p className="text-4xl font-black tracking-tight">{result.roleSuitability?.score ?? result.overallScore}%</p><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Role match</p></div></div></div><div>{result.roleSuitability?.targetRole && <p className="mb-5 rounded-xl bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-800">Target role: {result.roleSuitability.targetRole}</p>}<div className="grid gap-5">{Object.entries(result.breakdown).map(([key, score]) => <ScoreBar key={key} label={scoreLabels[key] ?? key} score={score} />)}</div><p className="mt-5 text-xs font-semibold text-slate-400">Parsing confidence: {result.confidence}%</p></div></div></Panel>
           <Panel title="Technical keyword coverage"><div className="grid gap-7 sm:grid-cols-2"><div><h3 className="mb-3 text-sm font-bold text-emerald-700">Matched keywords</h3><TagList items={result.matchedSkills} emptyText="No technical matches found." /></div><div><h3 className="mb-3 text-sm font-bold text-rose-700">Missing keywords</h3><TagList items={result.missingSkills} emptyText="No technical gaps detected." missing /></div></div></Panel>
