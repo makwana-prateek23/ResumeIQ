@@ -126,20 +126,99 @@ function usRecruitingChecks(resume, searchability, resumeQuality) {
   return { score: clamp((Object.values(checks).filter(Boolean).length / Object.keys(checks).length) * 100), checks, standard: 'US private-sector recruiter readiness' };
 }
 
+function scoreChecks(checks) {
+  return clamp((Object.values(checks).filter(Boolean).length / Math.max(Object.keys(checks).length, 1)) * 100);
+}
+
+function grammarAndWritingChecks(resume) {
+  const lines = resume.text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const bulletLines = lines.filter((line) => /^(?:[-•▪◦*]|\d+[.)])\s+/.test(line));
+  const repeatedWords = [...resume.text.matchAll(/\b([a-z]{2,})\s+\1\b/gi)].map((match) => match[0]);
+  const commonTypos = [...resume.text.matchAll(/\b(?:recieve|seperate|occured|managment|developement|responsibilites|experiance|acheived|succesfully|maintainance)\b/gi)].map((match) => match[0]);
+  const spacingErrors = lines.filter((line) => /\w\s{2,}\w|\s+[,.!?;:]/.test(line));
+  const firstPersonUses = resume.text.match(/\b(?:I|me|my|mine|we|our|ours)\b/g)?.length ?? 0;
+  const punctuatedBullets = bulletLines.filter((line) => /[.!?;:]$/.test(line)).length;
+  const punctuationRatio = bulletLines.length ? punctuatedBullets / bulletLines.length : 1;
+  const checks = {
+    noRepeatedWords: repeatedWords.length === 0,
+    noCommonTypos: commonTypos.length === 0,
+    cleanWordSpacing: spacingErrors.length === 0,
+    resumeVoice: firstPersonUses === 0,
+    consistentBulletPunctuation: bulletLines.length < 3 || punctuationRatio <= 0.2 || punctuationRatio >= 0.8
+  };
+  const issues = [
+    ...repeatedWords.slice(0, 5).map((text) => ({ type: 'Repeated word', text, suggestion: 'Remove the duplicated word.' })),
+    ...commonTypos.slice(0, 5).map((text) => ({ type: 'Possible spelling issue', text, suggestion: 'Review and correct this word.' })),
+    ...spacingErrors.slice(0, 3).map((text) => ({ type: 'Spacing issue', text: text.slice(0, 120), suggestion: 'Use a single space between words and no space before punctuation.' }))
+  ];
+  if (firstPersonUses) issues.push({ type: 'Resume voice', text: `${firstPersonUses} first-person reference${firstPersonUses === 1 ? '' : 's'} found`, suggestion: 'Start bullets with action verbs and omit I, me, my, we, and our.' });
+  if (!checks.consistentBulletPunctuation) issues.push({ type: 'Inconsistent punctuation', text: 'Bullet endings use mixed punctuation.', suggestion: 'Use one punctuation style consistently.' });
+  return { score: scoreChecks(checks), checks, issues, note: 'Potential writing issues detected with resume-focused rules; review in context.' };
+}
+
+function redFlagChecks(resume, resumeQuality) {
+  const checks = {
+    noSensitivePersonalDetails: !/\b(?:date of birth|dob|marital status|gender|sex|religion|race|ethnicity|social security number|ssn)\s*[:|-]/i.test(resume.text),
+    noSalaryDetails: !/\b(?:current salary|salary expectation|expected salary|compensation requirement)\b/i.test(resume.text),
+    noReferencesStatement: !/\breferences available upon request\b/i.test(resume.text),
+    noObjectiveCliches: !/\b(?:seeking a challenging position|objective\s*:|hardworking team player|results-driven professional)\b/i.test(resume.text),
+    reasonableLength: resumeQuality.wordCount <= 1200,
+    noContactInBody: !(resume.sections.experience && /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(resume.sections.experience))
+  };
+  return { score: scoreChecks(checks), checks };
+}
+
+function essentialSectionChecks(resume, searchability) {
+  const checks = {
+    contactInformation: searchability.checks.email && searchability.checks.phone,
+    professionalSummary: Boolean(resume.sections.summary),
+    workExperience: Boolean(resume.sections.experience),
+    education: Boolean(resume.sections.education),
+    skills: Boolean(resume.sections.skills || resume.skills?.length),
+    datedWorkHistory: searchability.checks.dates
+  };
+  return { score: scoreChecks(checks), checks, standard: 'Common U.S. private-sector resume essentials' };
+}
+
+function atsEssentialChecks(resume, searchability, resumeQuality) {
+  const checks = {
+    searchableContactDetails: searchability.checks.email && searchability.checks.phone,
+    recognizableHeadings: searchability.checks.experienceSection && searchability.checks.educationSection,
+    keywordReadySkills: Boolean(resume.sections.skills || resume.skills?.length),
+    chronologicalSignals: searchability.checks.dates,
+    scannableBullets: resumeQuality.checks.scannableBullets,
+    readableLength: resumeQuality.checks.appropriateLength,
+    professionalLink: searchability.checks.professionalLink
+  };
+  return { score: scoreChecks(checks), checks };
+}
+
 export function analyzeResumeAts(resume) {
   const searchability = searchabilityChecks(resume);
   const resumeQuality = qualityChecks(resume);
   const usRecruiting = usRecruitingChecks(resume, searchability, resumeQuality);
-  const atsScore = clamp((searchability.score * 0.45) + (usRecruiting.score * 0.55));
+  const grammarAndWriting = grammarAndWritingChecks(resume);
+  const redFlags = redFlagChecks(resume, resumeQuality);
+  const essentialSections = essentialSectionChecks(resume, searchability);
+  const atsEssentials = atsEssentialChecks(resume, searchability, resumeQuality);
+  const atsScore = clamp((searchability.score * 0.25) + (usRecruiting.score * 0.25) + (grammarAndWriting.score * 0.15) + (redFlags.score * 0.15) + (essentialSections.score * 0.1) + (atsEssentials.score * 0.1));
   const checkGroups = [
     ...Object.entries(searchability.checks).map(([key, passed]) => ({ key, passed, group: 'ATS readability' })),
-    ...Object.entries(usRecruiting.checks).map(([key, passed]) => ({ key, passed, group: 'U.S. recruiter readiness' }))
+    ...Object.entries(usRecruiting.checks).map(([key, passed]) => ({ key, passed, group: 'U.S. recruiter readiness' })),
+    ...Object.entries(grammarAndWriting.checks).map(([key, passed]) => ({ key, passed, group: 'Grammar & writing' })),
+    ...Object.entries(redFlags.checks).map(([key, passed]) => ({ key, passed, group: 'Recruiter red flags' })),
+    ...Object.entries(essentialSections.checks).map(([key, passed]) => ({ key, passed, group: 'Essential U.S. sections' })),
+    ...Object.entries(atsEssentials.checks).map(([key, passed]) => ({ key, passed, group: 'ATS essentials' }))
   ];
   return {
     atsScore,
     searchability,
     resumeQuality,
     usRecruiting,
+    grammarAndWriting,
+    redFlags,
+    essentialSections,
+    atsEssentials,
     passedChecks: checkGroups.filter((item) => item.passed),
     improvementChecks: checkGroups.filter((item) => !item.passed),
     details: {

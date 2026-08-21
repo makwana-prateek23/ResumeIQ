@@ -109,3 +109,19 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
   .no-print, .no-print * { display: none !important; }
   .print-report section, .print-report article { break-inside: avoid; box-shadow: none !important; }
 }
+@keyframes testimonial-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-50% - .5rem)); }
+}
+
+.testimonial-track {
+  animation: testimonial-scroll 32s linear infinite;
+}
+
+.testimonial-track:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .testimonial-track { animation: none; }
+}

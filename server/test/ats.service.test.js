@@ -22,6 +22,33 @@ test('runs a standalone ATS audit without a job description', () => {
   assert.equal(result.details.scoringScope.includes('no job description matching'), true);
   assert.equal(Array.isArray(result.passedChecks), true);
   assert.equal(Array.isArray(result.improvementChecks), true);
+  assert.ok(Number.isInteger(result.grammarAndWriting.score));
+  assert.ok(Number.isInteger(result.redFlags.score));
+  assert.ok(Number.isInteger(result.essentialSections.score));
+  assert.ok(Number.isInteger(result.atsEssentials.score));
+  assert.equal(Array.isArray(result.grammarAndWriting.issues), true);
+});
+
+test('reports potential grammar issues and US resume red flags with suggestions', () => {
+  const result = analyzeResumeAts(parseResume(`Alex Smith
+alex@example.com | 212-555-0199
+Professional Summary
+I am a results-driven professional professional seeking a challenging position.
+Skills
+JavaScript, React
+Experience
+Software Engineer | 2022 - Present
+- Acheived results  with React
+- Built internal tools.
+- Improved delivery speed
+Education
+Bachelor of Science
+References available upon request`));
+  assert.equal(result.grammarAndWriting.checks.noRepeatedWords, false);
+  assert.equal(result.grammarAndWriting.checks.resumeVoice, false);
+  assert.equal(result.redFlags.checks.noReferencesStatement, false);
+  assert.equal(result.redFlags.checks.noObjectiveCliches, false);
+  assert.ok(result.grammarAndWriting.issues.some((issue) => issue.suggestion));
 });
 
 const jobDescription = `

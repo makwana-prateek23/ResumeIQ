@@ -1,13 +1,52 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
-import { extractResume } from '../services/analysis.js';
+import { checkResumeAts, extractResume } from '../services/analysis.js';
+import { getCareerArticles } from '../services/career-content.js';
 import resumeWorkspaceHero from '../assets/resume-workspace-hero.png';
+
+const fallbackArticles = [
+  { id: 'resume', title: 'Build a resume recruiters can scan quickly', description: 'Use clear sections, specific outcomes, and a simple reading order.', url: '/resume', author: 'ResumeIQ', readingTime: 4 },
+  { id: 'interview', title: 'Turn your experience into interview stories', description: 'Prepare concise situation, action, and measurable result examples.', url: '/match', author: 'ResumeIQ', readingTime: 5 },
+  { id: 'search', title: 'Make every application more focused', description: 'Match your strongest evidence to the role instead of adding keyword clutter.', url: '/ats', author: 'ResumeIQ', readingTime: 3 }
+];
+
+const testimonials = [
+  { quote: 'The ATS review showed me exactly which sections were difficult to scan.', name: 'Jordan M.', role: 'Product analyst' },
+  { quote: 'I kept my original formatting and made every bullet much more specific.', name: 'Priya S.', role: 'Software engineer' },
+  { quote: 'Separating resume health from job matching made the feedback much clearer.', name: 'Marcus T.', role: 'Operations manager' },
+  { quote: 'The editor helped me keep custom sections that other builders removed.', name: 'Elena R.', role: 'UX designer' }
+];
 
 export default function LandingPage() {
   const { setResumeUploaded, setUploadedResumeFile, setEditorResumeData, setUploadMessage } = useOutletContext();
   const [preparing, setPreparing] = useState(false);
   const [error, setError] = useState('');
+  const [atsFile, setAtsFile] = useState(null);
+  const [atsResult, setAtsResult] = useState(null);
+  const [atsError, setAtsError] = useState('');
+  const [checkingAts, setCheckingAts] = useState(false);
+  const [articles, setArticles] = useState(fallbackArticles);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getCareerArticles(controller.signal).then((items) => items.length && setArticles(items)).catch(() => {});
+    return () => controller.abort();
+  }, []);
+
+  async function runAtsCheck(event) {
+    event.preventDefault();
+    if (!atsFile) return setAtsError('Choose a PDF or Word resume first.');
+    setCheckingAts(true); setAtsError(''); setAtsResult(null);
+    try {
+      const { data } = await checkResumeAts(atsFile);
+      setAtsResult(data);
+      setResumeUploaded(true); setUploadedResumeFile(atsFile);
+      setEditorResumeData(data.resume?.editorData ?? null);
+    } catch (requestError) {
+      setAtsError(requestError.response?.status === 404 ? 'The updated ATS service still needs to be deployed.' : requestError.response?.data?.error ?? 'We could not check this resume.');
+    } finally { setCheckingAts(false); }
+  }
 
   async function uploadResume(event) {
     const file = event.target.files?.[0];
@@ -38,6 +77,12 @@ export default function LandingPage() {
       <article className="rounded-2xl border border-indigo-200 bg-indigo-50 p-6 shadow-sm"><span className="text-xs font-black uppercase tracking-wider text-indigo-600">Tool 2</span><h2 className="mt-2 text-xl font-black">JD & Resume Matcher</h2><p className="mt-2 text-sm leading-6 text-slate-600">Compare your resume with a specific job description for missing requirements and exact tailoring actions.</p><Link to="/match" className="mt-4 inline-block text-sm font-black text-indigo-700">Match a job →</Link></article>
       <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><span className="text-xs font-black uppercase tracking-wider text-emerald-600">Export</span><h2 className="mt-2 text-xl font-black">Format and export</h2><p className="mt-2 text-sm leading-6 text-slate-500">Reorder sections, choose readable formatting, and download ATS-safe PDF and Word files.</p></article>
     </section>
+    <section className="mt-12 overflow-hidden rounded-[2rem] border border-cyan-200 bg-white shadow-xl shadow-cyan-100/40">
+      <div className="grid lg:grid-cols-[1.05fr_.95fr]"><div className="bg-slate-950 p-7 text-white sm:p-10"><p className="text-xs font-black uppercase tracking-[.2em] text-cyan-300">Instant resume health check</p><h2 className="mt-3 text-3xl font-black sm:text-4xl">Check your ATS score here</h2><p className="mt-3 max-w-xl leading-7 text-slate-300">No job description needed. Review structure, searchability, evidence, and U.S. recruiter readiness directly from the home page.</p><form onSubmit={runAtsCheck} className="mt-6"><label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed border-slate-600 bg-white/5 p-4 transition hover:border-cyan-300 hover:bg-white/10"><span><span className="block text-sm font-black">{atsFile?.name ?? 'Choose PDF or DOCX'}</span><span className="mt-1 block text-xs text-slate-400">Maximum 5 MB</span></span><span className="rounded-xl bg-cyan-400 px-3 py-2 text-xs font-black text-slate-950">Browse</span><input type="file" className="sr-only" accept=".pdf,.docx" onChange={(event) => { const selected = event.target.files?.[0] ?? null; setAtsError(''); setAtsResult(null); if (selected?.size > 5 * 1024 * 1024) return setAtsError('Resume must be 5 MB or smaller.'); setAtsFile(selected); }} /></label>{atsError && <p role="alert" className="mt-3 rounded-xl bg-rose-400/10 p-3 text-sm font-bold text-rose-200">{atsError}</p>}<button disabled={checkingAts} className="mt-4 w-full rounded-xl bg-cyan-400 px-5 py-3.5 text-sm font-black text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-300 disabled:opacity-60">{checkingAts ? 'Checking resume…' : 'Check ATS score'}</button></form></div>
+      <div className="grid min-h-80 place-items-center bg-gradient-to-br from-cyan-50 to-indigo-50 p-8 text-center">{atsResult ? <div className="w-full max-w-md"><div className="mx-auto grid h-32 w-32 place-items-center rounded-full bg-white text-4xl font-black text-cyan-700 shadow-xl ring-8 ring-cyan-100">{atsResult.atsScore}%</div><h3 className="mt-6 text-2xl font-black text-slate-950">Your resume readiness score</h3><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-bold text-slate-500">Readability</p><p className="mt-1 text-2xl font-black">{atsResult.searchability.score}%</p></div><div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-bold text-slate-500">Recruiter ready</p><p className="mt-1 text-2xl font-black">{atsResult.usRecruiting.score}%</p></div></div><Link to="/ats" className="mt-5 inline-block text-sm font-black text-indigo-700">View the complete audit →</Link></div> : <div className="max-w-sm"><span className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-cyan-100 text-2xl font-black text-cyan-800">ATS</span><h3 className="mt-5 text-2xl font-black">A clear score, useful checks</h3><p className="mt-2 leading-7 text-slate-500">Upload your resume to reveal its standalone ATS audit without leaving this page.</p></div>}</div></div>
+    </section>
+    <section className="mt-14"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600">Career reading</p><h2 className="mt-2 text-3xl font-black text-slate-950">Latest job-search articles</h2></div><span className="hidden text-xs font-bold text-slate-400 sm:block">Live from DEV Community</span></div><div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{articles.slice(0, 6).map((article) => <a key={article.id} href={article.url} target={String(article.url).startsWith('http') ? '_blank' : undefined} rel="noreferrer" className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">{article.image && <img src={article.image} alt="" className="h-40 w-full object-cover transition duration-500 group-hover:scale-105" />}<div className="p-5"><div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400"><span>{article.author}</span><span>•</span><span>{article.readingTime || 4} min read</span></div><h3 className="mt-3 text-lg font-black leading-snug text-slate-900 group-hover:text-indigo-700">{article.title}</h3><p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{article.description}</p><span className="mt-4 inline-block text-sm font-black text-indigo-700">Read article →</span></div></a>)}</div></section>
+    <section className="mt-14 overflow-hidden rounded-[2rem] bg-slate-950 py-10 text-white"><div className="px-7 sm:px-10"><p className="text-xs font-black uppercase tracking-[.2em] text-cyan-300">What job seekers say</p><h2 className="mt-2 text-3xl font-black">Built for real resume work</h2></div><div className="testimonial-track mt-7 flex w-max gap-4 px-4">{[...testimonials, ...testimonials].map((item, index) => <blockquote key={`${item.name}-${index}`} className="w-[300px] shrink-0 rounded-2xl border border-white/10 bg-white/5 p-5 sm:w-[360px]"><p className="leading-7 text-slate-200">“{item.quote}”</p><footer className="mt-5"><p className="font-black">{item.name}</p><p className="text-xs text-cyan-300">{item.role}</p></footer></blockquote>)}</div></section>
     <section className="mt-8 flex flex-col gap-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-6 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-black text-indigo-950">Using the Chrome extension?</p><p className="mt-1 text-sm text-indigo-700">Use it only for job-description matching and missing-keyword checks.</p></div><a href="/downloads/resumeiq-extension.zip" download className="rounded-xl bg-indigo-600 px-5 py-3 text-center text-sm font-bold text-white">Download extension</a></section>
   </main>;
 }
