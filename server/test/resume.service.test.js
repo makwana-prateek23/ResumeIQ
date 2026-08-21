@@ -74,3 +74,46 @@ Developer at Example Corp
     /\n  - Built accessible React applications$/
   );
 });
+
+test('detects unknown title-case sections and preserves spacing and source order', () => {
+  const editor = buildEditorResume(parseResume(`Taylor Reed
+Data Analyst
+taylor@example.com
+
+Professional Summary
+Turns complex data into clear decisions.
+
+Selected Engagements
+Client migration
+  Preserved nested detail
+
+  Second paragraph after an intentional blank line.
+
+Technical Skills
+SQL, Tableau`));
+
+  const custom = editor.importedSections.find(({ title }) => title === 'Selected Engagements');
+  assert.ok(custom);
+  assert.equal(custom.content, 'Client migration\n  Preserved nested detail\n\n  Second paragraph after an intentional blank line.');
+  assert.deepEqual(editor.sectionOrder, ['summary', custom.id, 'skills']);
+});
+
+test('adds every recognized non-standard section to the imported document model', () => {
+  const editor = buildEditorResume(parseResume(`Morgan Chen
+Engineer
+
+EXPERIENCE
+Engineer at Example
+- Shipped a reliable service.
+
+PATENTS
+Adaptive workflow system, 2024
+
+COMMUNITY INVOLVEMENT
+Volunteer mentor`));
+
+  assert.deepEqual(editor.importedSections.map(({ title }) => title), [
+    'EXPERIENCE', 'PATENTS', 'COMMUNITY INVOLVEMENT'
+  ]);
+  assert.deepEqual(editor.sectionOrder, ['experience', 'imported-2', 'imported-3']);
+});

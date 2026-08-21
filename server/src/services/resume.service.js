@@ -24,8 +24,16 @@ const GENERIC_SECTION_NAMES = new Set([
   ...Object.values(SECTION_ALIASES).flat(), 'awards', 'achievements', 'languages',
   'volunteer experience', 'volunteering', 'publications', 'interests', 'activities',
   'accomplishments', 'honors', 'professional affiliations', 'memberships', 'references',
-  'additional information', 'personal details'
+  'additional information', 'personal details', 'projects', 'certifications',
+  'courses', 'coursework', 'professional development', 'conferences', 'patents',
+  'presentations', 'research', 'leadership', 'community involvement', 'extracurricular activities'
 ]);
+
+const ALIAS_TO_SECTION = new Map(
+  Object.entries(SECTION_ALIASES)
+    .filter(([key]) => ['summary', 'experience', 'skills', 'education'].includes(key))
+    .flatMap(([key, aliases]) => aliases.map((alias) => [alias, key]))
+);
 
 function normalize(value) {
   return value.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -36,10 +44,20 @@ function containsTerm(text, term) {
   return new RegExp(`(^|[^a-z0-9+#])${escaped}($|[^a-z0-9+#])`, 'i').test(text);
 }
 
-function isHeadingLine(line) {
+function isHeadingLine(line, context = {}) {
   const trimmed = line.trim();
   const normalized = normalize(trimmed).replace(/:$/, '');
-  return GENERIC_SECTION_NAMES.has(normalized) || (/^[A-Z][A-Z &/+-]{2,40}:?$/.test(trimmed) && !trimmed.includes('@'));
+  if (!trimmed || trimmed.length > 80 || trimmed.includes('@')) return false;
+  if (GENERIC_SECTION_NAMES.has(normalized)) return true;
+  if (/^[A-Z][A-Z0-9 &/,+-]{2,60}:?$/.test(trimmed) && !/^(?:19|20)\d{2}/.test(trimmed)) return true;
+  if (trimmed.endsWith(':') && /^[A-Z][\p{L}\p{N} &/,+()-]{1,60}:$/u.test(trimmed)) return true;
+
+  // Unknown Title Case headings are accepted only at a visual boundary. This
+  // catches sections such as "Selected Engagements" without treating every
+  // employer or job title as a section.
+  const words = trimmed.replace(/:$/, '').split(/\s+/);
+  const titleCase = words.length <= 7 && words.every((word) => /^(?:[A-Z][\p{L}\p{N}'&/+.-]*|and|of|for|&|\/)$/u.test(word));
+  return Boolean(titleCase && context.hasPreviousSection && (context.previousBlank || context.nextBlank));
 }
 
 export function extractSkills(text) {
@@ -53,7 +71,7 @@ function extractSection(text, aliases) {
   if (start < 0) return '';
   const body = [];
   for (let index = start + 1; index < lines.length; index += 1) {
-    if (isHeadingLine(lines[index])) break;
+    if (isHeadingLine(lines[index], { hasPreviousSection: true, previousBlank: !lines[index - 1]?.trim(), nextBlank: !lines[index + 1]?.trim() })) break;
     body.push(lines[index]);
   }
   return body.join('\n').trim();
@@ -178,22 +196,31 @@ function nonEmptyLines(value = '') {
 }
 
 function extractDocumentSections(text) {
-  // Preserve indentation from the source document. PDF/DOCX extraction often
-  // uses it to keep dates, employers, and bullet text visually associated.
-  const lines = text.split(/\r?\n/)
-    .map((line) => line.replace(/\s+$/, ''))
-    .filter((line) => line.trim() && !/^--?\s*\d+\s+of\s+\d+(?:\s*--)?$/i.test(line.trim()));
+  // Preserve indentation and intentional blank lines. They carry important
+  // grouping information in both DOCX and PDF text extraction.
+  const lines = text.split(/\r?\n/).map((line) => line.replace(/[ \t]+$/, ''));
   const sections = [];
   let current = null;
-  for (const line of lines) {
-    if (isHeadingLine(line)) {
-      current = { id: `imported-${sections.length + 1}`, title: line.replace(/:$/, '').trim(), content: '' };
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (/^--?\s*\d+\s+of\s+\d+(?:\s*--)?$/i.test(line.trim())) continue;
+    const heading = isHeadingLine(line, {
+      hasPreviousSection: sections.length > 0,
+      previousBlank: index === 0 || !lines[index - 1].trim(),
+      nextBlank: index === lines.length - 1 || !lines[index + 1].trim()
+    });
+    if (heading) {
+      const title = line.replace(/:$/, '').trim();
+      const canonicalKey = ALIAS_TO_SECTION.get(normalize(title)) || null;
+      current = { id: `imported-${sections.length + 1}`, title, content: '', canonicalKey };
       sections.push(current);
     } else if (current) {
       current.content += `${current.content ? '\n' : ''}${line}`;
     }
   }
-  return sections.filter((section) => section.content);
+  return sections
+    .map((section) => ({ ...section, content: section.content.replace(/^\n+|\n+$/g, '') }))
+    .filter((section) => section.content);
 }
 
 export function buildEditorResume(resume) {
@@ -286,14 +313,25 @@ export function buildEditorResume(resume) {
     }
   }
   if (pendingDegree) education.push({ id: education.length + 1, degree: pendingDegree, school: '', year: '' });
+  const importedSections = extractDocumentSections(resume.text);
+  const sectionOrder = [];
+  for (const section of importedSections) {
+    const key = section.canonicalKey || section.id;
+    if (!sectionOrder.includes(key)) sectionOrder.push(key);
+  }
+  // Keep editable standard sections available even when a heading was not
+  // detected, but never move a detected custom section out of source order.
+  for (const key of ['summary', 'experience', 'skills', 'education']) {
+    if (resume.sections[key] && !sectionOrder.includes(key)) sectionOrder.push(key);
+  }
   return {
     name, role, email, phone, location, linkedin, github, website,
     summary: resume.sections.summary,
     skills: resume.sections.skills || resume.skills.join(', '),
     experience,
     education,
-    sectionOrder: ['summary', 'experience', 'skills', 'education'],
-    importedSections: extractDocumentSections(resume.text),
+    sectionOrder,
+    importedSections,
     imported: true
   };
 }
