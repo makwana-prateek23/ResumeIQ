@@ -21,23 +21,39 @@ function linkTarget(value = '', type = 'url') {
 }
 
 const layoutPresets = {
-  compact: { size: 9.5, spacing: 1.08, margin: 24, sectionGap: 7, itemGap: 4, bulletIndent: 12 },
+  compact: { size: 9.5, spacing: 1.05, margin: 22, sectionGap: 6, itemGap: 3, bulletIndent: 12 },
   professional: { size: 10, spacing: 1.15, margin: 36, sectionGap: 10, itemGap: 8, bulletIndent: 14 },
   spacious: { size: 11, spacing: 1.22, margin: 48, sectionGap: 14, itemGap: 10, bulletIndent: 16 }
 };
-const initialStyle = { font: 'Arial', accent: '#000000', template: 'classic', pageSize: 'letter', preset: 'professional', spacingModelVersion: 4, ...layoutPresets.professional };
+const initialStyle = { font: 'Arial', accent: '#000000', template: 'classic', pageSize: 'letter', preset: 'professional', spacingModelVersion: 5, ...layoutPresets.professional };
+const resumeFonts = ['Arial', 'Aptos', 'Calibri', 'Cambria', 'Georgia', 'Garamond', 'Helvetica', 'Times New Roman', 'Trebuchet MS', 'Verdana', 'Tahoma', 'Courier New'];
+
+function importedLayoutStyle(data) {
+  if (!data?.imported) return initialStyle;
+  const textLength = [data.summary, data.skills, ...(data.experience || []).flatMap((item) => item.bullets || []), ...(data.customSections || data.importedSections || []).map((section) => section.content || '')]
+    .join(' ').length;
+  const itemCount = (data.experience || []).length + (data.education || []).length + (data.importedSections || []).length;
+  const dense = textLength > 6000 || itemCount > 10;
+  return { ...initialStyle, preset: 'compact', ...(dense ? { ...layoutPresets.compact, margin: 18, sectionGap: 5, itemGap: 2, spacing: 1.02 } : layoutPresets.compact) };
+}
+
+function pdfFontFamily(font) {
+  if (/courier/i.test(font)) return 'courier';
+  if (/times|georgia|cambria|garamond/i.test(font)) return 'times';
+  return 'helvetica';
+}
 function getLayoutMetrics(style) {
   const page = style.pageSize === 'a4' ? { width: 595.28, height: 841.89 } : { width: 612, height: 792 };
   const bodySize = Math.min(11, Math.max(9.5, Number(style.size) || 10));
-  const spacing = Math.min(1.22, Math.max(1.08, Number(style.spacing) || 1.15));
+  const spacing = Math.min(1.22, Math.max(1.02, Number(style.spacing) || 1.15));
   return {
     page,
-    margin: Math.min(54, Math.max(24, Number(style.margin) || 36)),
+    margin: Math.min(54, Math.max(18, Number(style.margin) || 36)),
     bodySize,
     spacing,
     lineHeight: bodySize * spacing,
-    sectionGap: Math.min(16, Math.max(6, Number(style.sectionGap) || 10)),
-    itemGap: Math.min(10, Math.max(3, Number(style.itemGap) || 5)),
+    sectionGap: Math.min(16, Math.max(5, Number(style.sectionGap) || 10)),
+    itemGap: Math.min(10, Math.max(2, Number(style.itemGap) || 5)),
     bulletIndent: Math.min(18, Math.max(10, Number(style.bulletIndent) || 14)),
     headingSize: 10,
     headingHeight: 14,
@@ -206,9 +222,10 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
     } catch { return initialResume; }
   });
   const [style, setStyle] = useState(() => {
+    const importedDefault = importedLayoutStyle(initialResumeData);
     try {
       const savedStyle = JSON.parse(localStorage.getItem(storageKey))?.style;
-      if (!savedStyle) return initialStyle;
+      if (!savedStyle || initialResumeData) return importedDefault;
       if (!savedStyle.preset || savedStyle.sectionGap == null || savedStyle.bulletIndent == null) {
         return { ...initialStyle, font: savedStyle.font || initialStyle.font, accent: savedStyle.accent === '#3730a3' ? '#000000' : (savedStyle.accent || initialStyle.accent), template: savedStyle.template || initialStyle.template };
       }
@@ -323,7 +340,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const width = pageWidth - margin * 2;
-      const pdfFont = /times|georgia/i.test(style.font) ? 'times' : 'helvetica';
+      const pdfFont = pdfFontFamily(style.font);
       let y = margin;
       const usablePageHeight = pageHeight - margin * 2;
       const ensureSpace = (points) => { if (y + Math.min(points, usablePageHeight) > pageHeight - margin) { pdf.addPage(); y = margin; return true; } return false; };
@@ -614,7 +631,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
           <p className="text-xs font-bold text-slate-700">Text appearance</p>
           <p className="mt-1 text-xs text-slate-500">Balanced values keep the preview and downloads consistent.</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <label className="text-xs font-bold text-slate-600">Font<select value={style.font} onChange={(e) => updateAppearance('font', e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option>Arial</option><option>Calibri</option><option>Georgia</option><option>Times New Roman</option></select></label>
+            <label className="text-xs font-bold text-slate-600">Font<select value={style.font} onChange={(e) => updateAppearance('font', e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-2">{resumeFonts.map((font) => <option key={font}>{font}</option>)}</select></label>
             <label className="text-xs font-bold text-slate-600">Text size<select value={layout.bodySize} onChange={(e) => updateAppearance('size', Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option value="9.5">Small</option><option value="10">Balanced</option><option value="10.5">Medium</option><option value="11">Large</option></select></label>
             <label className="text-xs font-bold text-slate-600">Line spacing<select value={layout.spacing} onChange={(e) => updateAppearance('spacing', Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 p-2"><option value="1.08">Tight</option><option value="1.15">Balanced</option><option value="1.22">Relaxed</option></select></label>
           </div>
