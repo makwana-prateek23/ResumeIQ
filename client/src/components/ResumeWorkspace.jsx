@@ -205,7 +205,7 @@ function PreviewSectionContent({ section, resume, color, style: selectedStyle })
   const hasExperience = resume.experience.some((item) => item.role || item.company || item.start || item.end || item.bullets.some(Boolean));
   const hasEducation = resume.education.some((item) => item.degree || item.school || item.year);
   if (resume.imported && ((section === 'summary' && !resume.summary) || (section === 'experience' && !hasExperience) || (section === 'skills' && !resume.skills) || (section === 'education' && !hasEducation))) return null;
-  if (section === 'summary') return <ResumeSection title="Professional Summary" color={color} gap={style.sectionGap}><p className="break-words text-left">{reflowParagraph(placeholder(resume.summary, 'Write a focused 2–4 line summary that highlights your experience, specialization, and strongest result.'))}</p></ResumeSection>;
+  if (section === 'summary') return <ResumeSection title="Professional Summary" color={color} gap={style.sectionGap}><p className="break-words text-justify">{reflowParagraph(placeholder(resume.summary, 'Write a focused 2–4 line summary that highlights your experience, specialization, and strongest result.'))}</p></ResumeSection>;
   if (section === 'experience') return <ResumeSection title="Experience" color={color} gap={style.sectionGap}>{resume.experience.map((item, index) => <div key={item.id} className="break-inside-avoid" style={{ marginBottom: index < resume.experience.length - 1 ? `${style.itemGap}px` : 0 }}><div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-bold text-slate-950"><span>{placeholder(item.role, 'ROLE TITLE')}{item.company ? ` · ${item.company}` : resume.imported ? '' : ' · COMPANY'}</span>{(item.start || item.end || !resume.imported) && <span className="whitespace-nowrap">{placeholder(item.start, 'START')} – {placeholder(item.end, 'END')}</span>}</div>{item.bullets.length > 0 && <ul className="mt-0.5 list-disc" style={{ paddingLeft: `${style.bulletIndent}px` }}>{item.bullets.map((bullet, bulletIndex) => <li key={bulletIndex} className="break-words">{placeholder(bullet, 'Describe what you achieved, how you did it, and the measurable result.')}</li>)}</ul>}</div>)}</ResumeSection>;
   if (section === 'skills') return <ResumeSection title="Skills" color={color} gap={style.sectionGap}><SkillsContent value={resume.skills} fallback={resume.imported ? '' : 'Add relevant skills separated by commas.'} /></ResumeSection>;
   if (section === 'education') return <ResumeSection title="Education" color={color} gap={style.sectionGap}>{resume.education.map((item, index) => <div key={item.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5 font-bold" style={{ marginBottom: index < resume.education.length - 1 ? `${Math.max(2, style.itemGap / 2)}px` : 0 }}><span className="min-w-0 flex-1 break-words">{placeholder(item.degree, 'DEGREE')}{item.school ? ` · ${item.school}` : resume.imported ? '' : ' · INSTITUTION'}</span><span className="whitespace-nowrap">{placeholder(item.year, 'YEAR')}</span></div>)}</ResumeSection>;
@@ -362,16 +362,14 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       const naturalSummaryText = (value, gap = 0) => {
         const lines = measureLines(reflowParagraph(value));
         pdf.setFont(pdfFont, 'normal'); pdf.setFontSize(layout.bodySize); pdf.setTextColor('#334155');
-        const normalSpace = pdf.getTextWidth(' ');
         lines.forEach((line, index) => {
           ensureSpace(layout.lineHeight);
           const words = String(line).trim().split(/\s+/).filter(Boolean);
           const wordsWidth = words.reduce((total, word) => total + pdf.getTextWidth(word), 0);
-          const balancedGap = words.length > 1 ? (width - wordsWidth) / (words.length - 1) : normalSpace;
-          const canBalance = index < lines.length - 1 && words.length >= 6 && balancedGap <= normalSpace * 1.75;
-          if (!canBalance) {
+          if (index === lines.length - 1 || words.length < 2) {
             pdf.text(line, margin, y);
           } else {
+            const balancedGap = (width - wordsWidth) / (words.length - 1);
             let x = margin;
             words.forEach((word, wordIndex) => {
               pdf.text(word, x, y);
@@ -523,7 +521,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         const runSize = options.size ?? bodySize;
         const exactLineHeight = Math.round((runSize / 2) * 20 * (options.heading ? 1.08 : layout.spacing));
         return new Paragraph({
-          alignment: options.center ? AlignmentType.CENTER : AlignmentType.LEFT,
+          alignment: options.center ? AlignmentType.CENTER : options.justify ? AlignmentType.JUSTIFIED : AlignmentType.LEFT,
           spacing: { before: options.before, after: options.after ?? 0, line: exactLineHeight, lineRule: LineRuleType.EXACT },
           tabStops: options.tabs ? [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }] : undefined,
           bullet: options.bullet ? { level: 0 } : undefined,
@@ -547,7 +545,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       ]) }));
       const sectionHeading = (title, preserveCase = false) => children.push(paragraph(preserveCase ? title : title.toUpperCase(), { heading: true, bold: true, size: Math.round(layout.headingSize * 2), before: Math.round(layout.sectionGap * 20), after: Math.round(layout.headingContentGap * 20), keepNext: true }));
       const wordSections = {
-        summary: () => { if (!resume.summary) return; sectionHeading('Professional Summary'); children.push(paragraph(reflowParagraph(resume.summary), { after: 0 })); },
+        summary: () => { if (!resume.summary) return; sectionHeading('Professional Summary'); children.push(paragraph(reflowParagraph(resume.summary), { after: 0, justify: true })); },
         experience: () => {
           const items = resume.experience.filter((item) => item.role || item.company || item.location || item.start || item.end || item.bullets.some(Boolean));
           if (!items.length) return;
