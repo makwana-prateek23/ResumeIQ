@@ -201,7 +201,7 @@ function PreviewSectionContent({ section, resume, color, style: selectedStyle })
   const hasExperience = resume.experience.some((item) => item.role || item.company || item.start || item.end || item.bullets.some(Boolean));
   const hasEducation = resume.education.some((item) => item.degree || item.school || item.year);
   if (resume.imported && ((section === 'summary' && !resume.summary) || (section === 'experience' && !hasExperience) || (section === 'skills' && !resume.skills) || (section === 'education' && !hasEducation))) return null;
-  if (section === 'summary') return <ResumeSection title="Professional Summary" color={color} gap={style.sectionGap}><p className="break-words text-justify">{placeholder(resume.summary, 'Write a focused 2–4 line summary that highlights your experience, specialization, and strongest result.')}</p></ResumeSection>;
+  if (section === 'summary') return <ResumeSection title="Professional Summary" color={color} gap={style.sectionGap}><p className="break-words text-left">{placeholder(resume.summary, 'Write a focused 2–4 line summary that highlights your experience, specialization, and strongest result.')}</p></ResumeSection>;
   if (section === 'experience') return <ResumeSection title="Experience" color={color} gap={style.sectionGap}>{resume.experience.map((item, index) => <div key={item.id} className="break-inside-avoid" style={{ marginBottom: index < resume.experience.length - 1 ? `${style.itemGap}px` : 0 }}><div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-bold text-slate-950"><span>{placeholder(item.role, 'ROLE TITLE')}{item.company ? ` · ${item.company}` : resume.imported ? '' : ' · COMPANY'}</span>{(item.start || item.end || !resume.imported) && <span className="whitespace-nowrap">{placeholder(item.start, 'START')} – {placeholder(item.end, 'END')}</span>}</div>{item.bullets.length > 0 && <ul className="mt-0.5 list-disc" style={{ paddingLeft: `${style.bulletIndent}px` }}>{item.bullets.map((bullet, bulletIndex) => <li key={bulletIndex} className="break-words">{placeholder(bullet, 'Describe what you achieved, how you did it, and the measurable result.')}</li>)}</ul>}</div>)}</ResumeSection>;
   if (section === 'skills') return <ResumeSection title="Skills" color={color} gap={style.sectionGap}><SkillsContent value={resume.skills} fallback={resume.imported ? '' : 'Add relevant skills separated by commas.'} /></ResumeSection>;
   if (section === 'education') return <ResumeSection title="Education" color={color} gap={style.sectionGap}>{resume.education.map((item, index) => <div key={item.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5 font-bold" style={{ marginBottom: index < resume.education.length - 1 ? `${Math.max(2, style.itemGap / 2)}px` : 0 }}><span className="min-w-0 flex-1 break-words">{placeholder(item.degree, 'DEGREE')}{item.school ? ` · ${item.school}` : resume.imported ? '' : ' · INSTITUTION'}</span><span className="whitespace-nowrap">{placeholder(item.year, 'YEAR')}</span></div>)}</ResumeSection>;
@@ -355,28 +355,6 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         const lines = measureLines(value, size, indent, weight);
         lines.forEach((line) => { ensureSpace(size * layout.spacing); pdf.text(line, margin + indent, y); y += size * layout.spacing; }); y += gap;
       };
-      const justifiedText = (value, gap = 0) => {
-        const lines = measureLines(value);
-        pdf.setFont(pdfFont, 'normal'); pdf.setFontSize(layout.bodySize); pdf.setTextColor('#334155');
-        lines.forEach((line, index) => {
-          ensureSpace(layout.lineHeight);
-          const isLastLine = index === lines.length - 1;
-          const words = String(line).trim().split(/\s+/).filter(Boolean);
-          if (isLastLine || words.length < 2) {
-            pdf.text(line, margin, y);
-          } else {
-            const wordsWidth = words.reduce((total, word) => total + pdf.getTextWidth(word), 0);
-            const wordGap = Math.max(pdf.getTextWidth(' '), (width - wordsWidth) / (words.length - 1));
-            let wordX = margin;
-            words.forEach((word) => {
-              pdf.text(word, wordX, y);
-              wordX += pdf.getTextWidth(word) + wordGap;
-            });
-          }
-          y += layout.lineHeight;
-        });
-        y += gap;
-      };
       const bulletText = (value, gap = 1) => {
         if (!value) return;
         pdf.setFont(pdfFont, 'normal'); pdf.setFontSize(layout.bodySize); pdf.setTextColor('#334155');
@@ -483,7 +461,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         return height + Math.max(1, pdf.splitTextToSize(study, Math.max(120, width - rightWidth)).length) * layout.lineHeight + Math.max(3, layout.itemGap / 2);
       }, 0);
       const pdfSections = {
-        summary: () => { if (!resume.summary) return; const summaryHeight = measureLines(resume.summary).length * layout.lineHeight; heading('Professional summary', summaryHeight); justifiedText(resume.summary); },
+        summary: () => { if (!resume.summary) return; const summaryHeight = measureLines(resume.summary).length * layout.lineHeight; heading('Professional summary', summaryHeight); text(resume.summary, layout.bodySize, 'normal', 0); },
         experience: () => { const items = resume.experience.filter((item) => item.role || item.company || item.location || item.start || item.end || item.bullets.some(Boolean)); if (!items.length) return; const itemHeight = (item) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); const title = [item.role, item.company].filter(Boolean).join(' — '); pdf.setFont(pdfFont, 'bold'); pdf.setFontSize(layout.bodySize); const dateWidth = dates ? pdf.getTextWidth(dates) + 12 : 0; const bullets = item.bullets.filter(Boolean); return (pdf.splitTextToSize(title, Math.max(120, width - dateWidth)).length * layout.lineHeight) + (item.location ? 9 * layout.spacing + 2 : 0) + (bullets.length ? 3 : 0) + bullets.reduce((height, bullet) => height + (pdf.splitTextToSize(String(bullet), width - layout.bulletIndent).length * layout.lineHeight) + 1, 0); }; const orphanLimit = Math.max(120, usablePageHeight * 0.18); heading('Experience', Math.min(itemHeight(items[0]), orphanLimit)); items.forEach((item, itemIndex) => { const dates = [item.start, item.end].filter(Boolean).join(' – '); const title = [item.role, item.company].filter(Boolean).join(' — '); const bullets = item.bullets.filter(Boolean); const requiredHeight = itemHeight(item); const remainingHeight = pageHeight - margin - y; if (requiredHeight > remainingHeight && remainingHeight < orphanLimit) ensureSpace(requiredHeight); twoColumnText(title, dates, layout.bodySize, 'bold', bullets.length ? 3 : 1); text(item.location, 9, 'normal', bullets.length ? 2 : 0); bullets.forEach((bullet) => bulletText(bullet)); if (itemIndex < items.length - 1) y += layout.itemGap; }); },
         skills: () => { if (!resume.skills) return; const rows = parseSkillRows(resume.skills); const skillsHeight = layout.sectionGap + layout.headingHeight + rows.reduce((height, row) => height + Math.max(1, measureLines(`${row.category ? `${row.category}: ` : ''}${row.skills}`).length) * layout.lineHeight + 1, 0); const skillsIndex = orderedSections.indexOf('skills'); const educationFollows = orderedSections.slice(skillsIndex + 1).find((section) => section === 'education' || pdfSections[section] || resume.customSections?.some((item) => item.id === section)) === 'education'; const groupedHeight = skillsHeight + (educationFollows && educationItems.length ? educationBlockHeight() : 0); if (groupedHeight <= usablePageHeight && y + groupedHeight > pageHeight - margin) { pdf.addPage(); y = margin; } const firstRowHeight = rows[0] ? Math.max(layout.lineHeight, measureLines(`${rows[0].category ? `${rows[0].category}: ` : ''}${rows[0].skills}`).length * layout.lineHeight) : layout.lineHeight; heading('Skills', firstRowHeight); rows.forEach((row, index) => labeledText(row.category, row.skills, index < rows.length - 1 ? 1 : 0)); },
         education: () => { if (!educationItems.length) return; heading('Education', layout.lineHeight); educationItems.forEach((item, index) => twoColumnText([item.degree, item.school].filter(Boolean).join(' — '), item.year, layout.bodySize, 'bold', index < educationItems.length - 1 ? Math.max(3, layout.itemGap / 2) : 0)); }
@@ -538,7 +516,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       ]) }));
       const sectionHeading = (title, preserveCase = false) => children.push(paragraph(preserveCase ? title : title.toUpperCase(), { heading: true, bold: true, size: Math.round(layout.headingSize * 2), before: Math.round(layout.sectionGap * 20), after: Math.round(layout.headingContentGap * 20), keepNext: true }));
       const wordSections = {
-        summary: () => { if (!resume.summary) return; sectionHeading('Professional Summary'); children.push(paragraph(resume.summary, { after: 0, justify: true })); },
+        summary: () => { if (!resume.summary) return; sectionHeading('Professional Summary'); children.push(paragraph(resume.summary, { after: 0 })); },
         experience: () => {
           const items = resume.experience.filter((item) => item.role || item.company || item.location || item.start || item.end || item.bullets.some(Boolean));
           if (!items.length) return;
