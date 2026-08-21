@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 const steps = [
   { to: '/', label: 'Upload', match: (path) => path === '/' },
   { to: '/resume', label: 'Edit & format', match: (path) => path === '/resume' || path === '/create' },
-  { to: '/match', label: 'Job match', match: (path) => path === '/match' },
+  { to: '/match', label: 'ATS checker', match: (path) => path === '/match' },
 ];
 
 export default function StepNav({ resumeUploaded, onLockedClick }) {
