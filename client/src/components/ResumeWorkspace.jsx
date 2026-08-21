@@ -345,7 +345,9 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       const pageHeight = pdf.internal.pageSize.getHeight();
       const width = pageWidth - margin * 2;
       const pdfFont = pdfFontFamily(style.font);
-      let y = margin;
+      // jsPDF positions text by its baseline. Add a small ascent allowance so
+      // the name's visible top edge respects the configured page margin.
+      let y = margin + Math.min(12, margin * 0.6);
       const usablePageHeight = pageHeight - margin * 2;
       const ensureSpace = (points) => { if (y + Math.min(points, usablePageHeight) > pageHeight - margin) { pdf.addPage(); y = margin; return true; } return false; };
       const measureLines = (value, size = layout.bodySize, indent = 0, weight = 'normal') => {
@@ -514,21 +516,27 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
     setDownloadingWord(true);
     setExportMessage('');
     try {
-      const { AlignmentType, BorderStyle, Document, ExternalHyperlink, LineRuleType, Packer, Paragraph, TabStopPosition, TabStopType, TextRun } = await import('docx');
+      const { AlignmentType, BorderStyle, Document, ExternalHyperlink, LineRuleType, Packer, Paragraph, TabStopType, TextRun } = await import('docx');
       const bodySize = Math.round(layout.bodySize * 2);
+      const wordPageWidth = style.pageSize === 'a4' ? 11906 : 12240;
+      const wordPageHeight = style.pageSize === 'a4' ? 16838 : 15840;
+      const wordMargin = Math.round(layout.margin * 20);
+      const wordContentWidth = wordPageWidth - (wordMargin * 2);
       const children = [];
       const paragraph = (value, options = {}) => {
         const runSize = options.size ?? bodySize;
         const exactLineHeight = Math.round((runSize / 2) * 20 * (options.heading ? 1.08 : layout.spacing));
+        const bulletIndent = Math.round(layout.bulletIndent * 20);
+        const hangingIndent = Math.min(140, Math.round(bulletIndent * 0.5));
         return new Paragraph({
           alignment: options.center ? AlignmentType.CENTER : options.justify ? AlignmentType.JUSTIFIED : AlignmentType.LEFT,
           spacing: { before: options.before, after: options.after ?? 0, line: exactLineHeight, lineRule: LineRuleType.EXACT },
-          tabStops: options.tabs ? [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }] : undefined,
-          bullet: options.bullet ? { level: 0 } : undefined,
+          tabStops: options.tabs ? [{ type: TabStopType.RIGHT, position: wordContentWidth }] : undefined,
+          indent: options.bullet ? { left: bulletIndent, hanging: hangingIndent } : undefined,
           border: options.heading ? { bottom: { color: '000000', style: BorderStyle.SINGLE, size: 4, space: 2 } } : undefined,
           keepNext: options.keepNext,
           keepLines: true,
-          children: [new TextRun({ text: value, bold: options.bold, size: runSize, color: '000000', font: style.font })]
+          children: [new TextRun({ text: `${options.bullet ? '• ' : ''}${value}`, bold: options.bold, size: runSize, color: '000000', font: style.font })]
         });
       };
       children.push(paragraph(resume.name, { center: true, bold: true, size: 32, after: 30 }));
@@ -590,8 +598,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
           String(custom.content).split(/\r?\n/).forEach((line) => children.push(paragraph(line, { after: 20 })));
         }
       });
-      const wordMargin = Math.round(layout.margin * 20);
-      const wordDocument = new Document({ sections: [{ properties: { page: { size: style.pageSize === 'a4' ? { width: 11906, height: 16838 } : { width: 12240, height: 15840 }, margin: { top: wordMargin, right: wordMargin, bottom: wordMargin, left: wordMargin } } }, children }] });
+      const wordDocument = new Document({ sections: [{ properties: { page: { size: { width: wordPageWidth, height: wordPageHeight }, margin: { top: wordMargin, right: wordMargin, bottom: wordMargin, left: wordMargin } } }, children }] });
       const blob = await Packer.toBlob(wordDocument);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
