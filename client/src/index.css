@@ -125,3 +125,12 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
 @media (prefers-reduced-motion: reduce) {
   .testimonial-track { animation: none; }
 }
+
+@keyframes auth-float { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(30px, -24px, 0) scale(1.08); } }
+@keyframes auth-arrive { from { opacity: 0; transform: translateY(22px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.auth-stage { background-image: radial-gradient(circle at 15% 15%, rgba(34,211,238,.16), transparent 32%), radial-gradient(circle at 80% 70%, rgba(99,102,241,.22), transparent 34%); }
+.auth-orb { position: absolute; border-radius: 9999px; filter: blur(2px); opacity: .35; animation: auth-float 9s ease-in-out infinite; }
+.auth-orb-one { width: 18rem; height: 18rem; left: -5rem; bottom: -5rem; background: #22d3ee; }
+.auth-orb-two { width: 22rem; height: 22rem; right: -6rem; top: -8rem; background: #6366f1; animation-delay: -4s; }
+.auth-card { animation: auth-arrive .65s cubic-bezier(.2,.8,.2,1) both; }
+@media (prefers-reduced-motion: reduce) { .auth-orb, .auth-card { animation: none; } }

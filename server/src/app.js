@@ -6,6 +6,7 @@ import env from "./config/env.js";
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js';
 import healthRoutes from "./routes/health.routes.js";
 import analysisRoutes from './routes/analysis.routes.js';
+import authRoutes from './routes/auth.routes.js';
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 
 app.use("/api/health", healthRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/analysis', analysisRoutes);
 
 app.use(notFoundHandler);

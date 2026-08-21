@@ -2,6 +2,7 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import { analyzeResume, checkResumeAts, extractResumeForEditor } from '../controllers/analysis.controller.js';
+import { requireAuth } from '../middleware/auth.middleware.js';
 
 const router = Router();
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -28,8 +29,8 @@ const analysisLimiter = rateLimit({
   message: { error: 'Too many analysis requests. Please try again later.' }
 });
 
-router.post('/extract', analysisLimiter, upload.single('resume'), extractResumeForEditor);
+router.post('/extract', requireAuth, analysisLimiter, upload.single('resume'), extractResumeForEditor);
 router.post('/ats-check', analysisLimiter, upload.single('resume'), checkResumeAts);
-router.post('/', analysisLimiter, upload.single('resume'), analyzeResume);
+router.post('/', requireAuth, analysisLimiter, upload.single('resume'), analyzeResume);
 
 export default router;

@@ -15,6 +15,10 @@ export function errorHandler(error, _req, res, _next) {
       ? 'Resume file must be 5 MB or smaller'
       : 'Invalid file upload';
   }
+  if (error.name === 'ZodError') {
+    status = 400;
+    message = error.issues?.[0]?.message ?? 'Invalid account details';
+  }
   const isServerError = status >= 500;
 
   if (isServerError) console.error(error);

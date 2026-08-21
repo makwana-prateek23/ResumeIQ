@@ -3,6 +3,7 @@ import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { checkResumeAts, extractResume } from '../services/analysis.js';
 import { getCareerArticles } from '../services/career-content.js';
 import resumeWorkspaceHero from '../assets/resume-workspace-hero.png';
+import useAuth from '../hooks/useAuth.js';
 
 const fallbackArticles = [
   { id: 'resume', title: 'Build a resume recruiters can scan quickly', description: 'Use clear sections, specific outcomes, and a simple reading order.', url: '/resume', author: 'ResumeIQ', readingTime: 4 },
@@ -27,6 +28,7 @@ export default function LandingPage() {
   const [checkingAts, setCheckingAts] = useState(false);
   const [articles, setArticles] = useState(fallbackArticles);
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -51,6 +53,7 @@ export default function LandingPage() {
   async function uploadResume(event) {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (!isAuthenticated) { navigate('/login', { state: { from: '/' } }); return; }
     setError('');
     if (!/\.(pdf|docx)$/i.test(file.name)) return setError('Choose a PDF or Word (.docx) resume.');
     if (file.size > 5 * 1024 * 1024) return setError('Resume file must be 5 MB or smaller.');
