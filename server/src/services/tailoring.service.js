@@ -229,6 +229,34 @@ export function buildTailoringPlan(analysis, resume) {
       action: 'Use concise, text-readable bullets beginning with strong action verbs.'
     });
   }
+  if (!analysis.resumeQuality.checks.actionOrientedBullets) {
+    sectionActions.push({
+      section: 'experience',
+      priority: 'medium',
+      action: 'Start most experience bullets with a specific action verb and describe the result, scope, or business impact.'
+    });
+  }
+  if (!analysis.resumeQuality.checks.conciseBullets) {
+    sectionActions.push({
+      section: 'experience',
+      priority: 'medium',
+      action: 'Shorten long bullets to roughly 35 words or fewer while preserving the action, context, and outcome.'
+    });
+  }
+  if (analysis.usRecruiting && !analysis.usRecruiting.checks.professionalLink) {
+    sectionActions.push({
+      section: 'contact information',
+      priority: 'low',
+      action: 'Add a relevant LinkedIn, GitHub, or portfolio link when it supports the target role.'
+    });
+  }
+  if (analysis.usRecruiting && !analysis.usRecruiting.checks.noSensitivePersonalDetails) {
+    sectionActions.push({
+      section: 'personal information',
+      priority: 'high',
+      action: 'Remove sensitive personal details that are not job qualifications, such as date of birth, marital status, religion, race, or Social Security number.'
+    });
+  }
 
   return {
     summary: {

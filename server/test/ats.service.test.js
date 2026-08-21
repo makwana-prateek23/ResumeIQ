@@ -86,7 +86,7 @@ test('produces a bounded, deterministic weighted analysis', () => {
   assert.ok(result.missingSkills.includes('aws'));
   assert.equal(result.weights.requirements, 35);
   assert.equal(result.weights.experience, 15);
-  assert.equal(result.details.scoringScope, 'ATS terminology plus evidence-backed skills, responsibilities, experience, education, domain knowledge, and work authorization');
+  assert.equal(result.details.scoringScope, 'ATS terminology plus evidence-backed skills, responsibilities, experience, education, domain knowledge, work authorization, and U.S. recruiter-readiness signals');
   assert.ok(Number.isInteger(result.atsScore));
   assert.ok(Number.isInteger(result.recruiterReadinessScore));
   assert.ok(result.confidence >= 50 && result.confidence <= 100);
@@ -342,4 +342,47 @@ test('detects unfamiliar technical terms from requirement sections and context c
   assert.ok(terms.includes('maximo'));
   assert.ok(result.matched.some((item) => item.aliases?.includes('plc')));
   assert.equal(terms.some((term) => /flexible work|employee assistance/i.test(term)), false);
+});
+
+test('applies US recruiter-readiness checks without scoring protected personal details', () => {
+  const result = analyzeMatch(parseResume(`
+    Jordan Lee
+    jordan@example.com | (555) 555-0100 | linkedin.com/in/jordan
+    Summary
+    Software engineer building reliable products.
+    Experience
+    Engineer | Example Corp | Jan 2021 - Present
+    - Built an API used by 2,000 users.
+    - Reduced processing time by 35%.
+    - Automated releases and saved 10 hours monthly.
+    Education
+    Bachelor of Science in Computer Science
+  `), `
+    Software Engineer
+    Python and API development are required.
+    We are an equal opportunity employer regardless of race, religion, national origin, age, disability, or genetic information.
+  `);
+
+  assert.equal(result.usRecruiting.standard, 'US private-sector recruiter readiness');
+  assert.equal(result.usRecruiting.checks.contactBasics, true);
+  assert.equal(result.usRecruiting.checks.quantifiedImpact, true);
+  assert.equal(result.usRecruiting.checks.noSensitivePersonalDetails, true);
+  assert.doesNotMatch(result.requirements.map((item) => item.term).join(' | '), /race|religion|national origin|genetic information/i);
+});
+
+test('honors degree-or-equivalent-experience language in US job descriptions', () => {
+  const result = analyzeMatch(parseResume(`
+    Alex Morgan
+    Summary
+    Platform engineer with 6 years of experience.
+    Experience
+    Engineer | Example Corp | Jan 2020 - Present
+    - Built reliable cloud services with Python.
+  `), `
+    Platform Engineer
+    A bachelor's degree or equivalent professional experience is required.
+    Python is required.
+  `);
+
+  assert.equal(result.breakdown.education, 85);
 });

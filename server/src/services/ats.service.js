@@ -55,10 +55,12 @@ function scoreTitle(jobTitle, resume) {
 function scoreEducation(requirementMatches, resume) {
   const requirements = requirementMatches.filter((match) => match.type === 'education');
   if (!requirements.length) return null;
-  if (!resume.sections.education) return 0;
   const requiredLevel = Math.max(...requirements.map((item) => degreeLevel(`${item.term} ${item.source}`)));
   const resumeLevel = degreeLevel(resume.sections.education);
-  return requiredLevel === 0 ? 100 : clamp((resumeLevel / requiredLevel) * 100);
+  const allowsEquivalentExperience = requirements.some((item) => /\b(?:or|and\/or)\s+(?:equivalent|comparable|relevant)\s+(?:professional\s+)?experience\b|\bequivalent combination of education and experience\b/i.test(item.source));
+  if (requiredLevel === 0) return resume.sections.education ? 100 : (allowsEquivalentExperience && resume.experienceYears > 0 ? 85 : 0);
+  const degreeScore = clamp((resumeLevel / requiredLevel) * 100);
+  return allowsEquivalentExperience && resume.experienceYears > 0 ? Math.max(degreeScore, 85) : degreeScore;
 }
 
 function scoreCategory(matches, type, coverageField = 'coverage') {
@@ -86,19 +88,42 @@ function searchabilityChecks(resume) {
 function qualityChecks(resume) {
   const wordCount = resume.text.match(/\b[\w+#.-]+\b/g)?.length ?? 0;
   const measurableResults = resume.text.match(/(?:\b\d+(?:\.\d+)?%|\$\s?\d|\b\d+\s*(?:users?|projects?|clients?|hours?|days?|months?)\b)/gi)?.length ?? 0;
-  const bulletCount = resume.text.split(/\r?\n/).filter((line) => /^\s*(?:[-•▪◦*]|\d+[.)])\s+/.test(line)).length;
+  const bulletLines = resume.text.split(/\r?\n/).filter((line) => /^\s*(?:[-•▪◦*‣⁃●○∙·]|\d+[.)]|[^\w\s]{1,3}(?=\s))\s+/.test(line));
+  const bulletCount = bulletLines.length;
+  const actionVerbPattern = /^\s*(?:[-•▪◦*‣⁃●○∙·]|\d+[.)]|[^\w\s]{1,3}(?=\s))\s+(?:achieved|analyzed|automated|built|created|cut|delivered|designed|developed|drove|engineered|established|generated|grew|implemented|improved|increased|launched|led|managed|optimized|reduced|resolved|saved|scaled|streamlined|supported|tested)\b/i;
+  const actionOrientedBullets = bulletLines.filter((line) => actionVerbPattern.test(line)).length;
+  const averageBulletWords = bulletCount ? bulletLines.reduce((sum, line) => sum + (line.match(/\b[\w+#.-]+\b/g)?.length ?? 0), 0) / bulletCount : 0;
   const checks = {
     appropriateLength: wordCount >= 250 && wordCount <= 1200,
     measurableResults: measurableResults >= 3,
-    scannableBullets: bulletCount >= 3
+    scannableBullets: bulletCount >= 3,
+    actionOrientedBullets: bulletCount >= 3 && actionOrientedBullets / bulletCount >= 0.6,
+    conciseBullets: bulletCount >= 3 && averageBulletWords <= 35
   };
   return {
     score: clamp((Object.values(checks).filter(Boolean).length / Object.keys(checks).length) * 100),
     checks,
     wordCount,
     measurableResults,
-    bulletCount
+    bulletCount,
+    actionOrientedBullets,
+    averageBulletWords: Number(averageBulletWords.toFixed(1))
   };
+}
+
+function usRecruitingChecks(resume, searchability, resumeQuality) {
+  const sensitivePersonalDetails = /\b(?:date of birth|dob|marital status|gender|sex|religion|race|ethnicity|nationality|social security number|ssn)\s*[:|-]/i.test(resume.text);
+  const checks = {
+    contactBasics: searchability.checks.email && searchability.checks.phone,
+    standardSections: searchability.checks.experienceSection && searchability.checks.educationSection,
+    datedExperience: searchability.checks.dates,
+    quantifiedImpact: resumeQuality.measurableResults >= 2,
+    actionOrientedBullets: resumeQuality.checks.actionOrientedBullets,
+    conciseBullets: resumeQuality.checks.conciseBullets,
+    professionalLink: searchability.checks.professionalLink,
+    noSensitivePersonalDetails: !sensitivePersonalDetails
+  };
+  return { score: clamp((Object.values(checks).filter(Boolean).length / Object.keys(checks).length) * 100), checks, standard: 'US private-sector recruiter readiness' };
 }
 
 function weightedOverall(breakdown) {
@@ -115,6 +140,7 @@ export function analyzeMatch(resume, jobDescription) {
   const jobTitle = extractJobTitle(jobDescription);
   const searchability = searchabilityChecks(resume);
   const resumeQuality = qualityChecks(resume);
+  const usRecruiting = usRecruitingChecks(resume, searchability, resumeQuality);
   const jobTitleScore = scoreTitle(jobTitle, resume);
   const experienceScore = requiredYears
     ? clamp((resume.experienceYears / requiredYears) * 100)
@@ -157,10 +183,12 @@ export function analyzeMatch(resume, jobDescription) {
     'Demonstrate important requirements inside achievement bullets instead of keyword stuffing.'
   ];
 
+  const recruiterEvidenceScore = weightedOverall(breakdown);
+  const recruiterReadinessScore = clamp((recruiterEvidenceScore * 0.85) + (usRecruiting.score * 0.15));
   const analysis = {
-    overallScore: clamp((weightedOverall(atsBreakdown) * 0.55) + (weightedOverall(breakdown) * 0.45)),
+    overallScore: clamp((weightedOverall(atsBreakdown) * 0.55) + (recruiterReadinessScore * 0.45)),
     atsScore: weightedOverall(atsBreakdown),
-    recruiterReadinessScore: weightedOverall(breakdown),
+    recruiterReadinessScore,
     mandatoryCoverage: scoreRequirements(requirementMatches.filter((item) => item.priority === 'required'), 'lexicalCoverage') ?? 100,
     confidence,
     breakdown: Object.fromEntries(Object.entries(breakdown).filter(([, value]) => value !== null)),
@@ -168,8 +196,8 @@ export function analyzeMatch(resume, jobDescription) {
     jobTitle: { target: jobTitle || null, score: jobTitleScore },
     roleSuitability: {
       targetRole: jobTitle || null,
-      score: clamp((weightedOverall(atsBreakdown) * 0.55) + (weightedOverall(breakdown) * 0.45)),
-      label: 'Combined ATS coverage and recruiter-ready evidence'
+      score: clamp((weightedOverall(atsBreakdown) * 0.55) + (recruiterReadinessScore * 0.45)),
+      label: 'Combined ATS coverage and U.S. recruiter-ready evidence'
     },
     requirements: requirementMatches,
     matched,
@@ -184,6 +212,7 @@ export function analyzeMatch(resume, jobDescription) {
       .map((item) => ({ term: item.term, priority: item.priority, source: item.source, tfIdfScore: item.tfIdfScore })),
     searchability,
     resumeQuality,
+    usRecruiting,
     strengths,
     weaknesses,
     suggestions,
@@ -193,7 +222,7 @@ export function analyzeMatch(resume, jobDescription) {
       experienceCalculationMethod: resume.experienceCalculation.method,
       extractedRequirementCount: requirements.length,
       ignoredNonTechnicalRequirementCount: extractedRequirements.length - requirements.length,
-      scoringScope: 'ATS terminology plus evidence-backed skills, responsibilities, experience, education, domain knowledge, and work authorization'
+      scoringScope: 'ATS terminology plus evidence-backed skills, responsibilities, experience, education, domain knowledge, work authorization, and U.S. recruiter-readiness signals'
     }
   };
 

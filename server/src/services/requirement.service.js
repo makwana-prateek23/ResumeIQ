@@ -57,7 +57,7 @@ const TERM_SPECS = [
   ['api development', ['development of apis'], 'hardSkill']
 ];
 
-const BOILERPLATE_PATTERN = /\b(equal opportunity|affirmative action|accommodation|disability|disabled|veteran|gender identity|sexual orientation|race|religion|national origin|privacy policy|recruiting process|application process|background check|drug test|pay transparency|salary range|compensation range|benefits package|submit (?:a )?request|contact recruiting|service-now\.com|askeg)\b/i;
+const BOILERPLATE_PATTERN = /\b(equal opportunity|affirmative action|accommodation|disability|disabled|veteran|gender identity|sexual orientation|race|ethnicity|religion|national origin|date of birth|marital status|pregnan(?:cy|t)|genetic information|privacy policy|recruiting process|application process|background check|drug test|pay transparency|salary range|compensation range|benefits package|submit (?:a )?request|contact recruiting|service-now\.com|askeg)\b/i;
 const TECHNICAL_CONTEXT_PATTERN = /\b(experience with|knowledge of|proficien(?:cy|t) in|familiar(?:ity)? with|expertise in|hands-on|skilled in|ability to (?:use|operate|configure|develop|design|implement)|certified in|working with|technologies include|tools include|technical skills?)\b/i;
 
 function isBoilerplateSegment(segment) {
