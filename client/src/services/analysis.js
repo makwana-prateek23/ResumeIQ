@@ -12,3 +12,9 @@ export function extractResume(resume) {
   formData.append('resume', resume);
   return api.post('/analysis/extract', formData);
 }
+
+export function checkResumeAts(resume) {
+  const formData = new FormData();
+  formData.append('resume', resume);
+  return api.post('/analysis/ats-check', formData);
+}

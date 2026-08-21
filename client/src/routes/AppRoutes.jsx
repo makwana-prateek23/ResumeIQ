@@ -4,6 +4,7 @@ import CreateResumePage from '../pages/CreateResumePage.jsx';
 import FormatResumePage from '../pages/FormatResumePage.jsx';
 import HomePage from '../pages/HomePage.jsx';
 import LandingPage from '../pages/LandingPage.jsx';
+import AtsCheckerPage from '../pages/AtsCheckerPage.jsx';
 
 function AppRoutes() {
   return (
@@ -11,6 +12,7 @@ function AppRoutes() {
       <Route element={<AppShell />}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/resume" element={<FormatResumePage />} />
+        <Route path="/ats" element={<AtsCheckerPage />} />
         <Route path="/match" element={<HomePage />} />
         <Route path="/create" element={<CreateResumePage />} />
       </Route>

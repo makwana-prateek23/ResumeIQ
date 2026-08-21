@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { analyzeMatch } from '../src/services/ats.service.js';
+import { analyzeMatch, analyzeResumeAts } from '../src/services/ats.service.js';
 import { buildEditorResume, calculateExperienceFromDates, parseResume } from '../src/services/resume.service.js';
 
 const resumeText = `
@@ -14,6 +14,15 @@ Built a React analytics dashboard and Node.js API using PostgreSQL.
 Education
 Bachelor of Science in Computer Science
 `;
+
+test('runs a standalone ATS audit without a job description', () => {
+  const result = analyzeResumeAts(parseResume(resumeText));
+  assert.ok(Number.isInteger(result.atsScore));
+  assert.ok(result.atsScore >= 0 && result.atsScore <= 100);
+  assert.equal(result.details.scoringScope.includes('no job description matching'), true);
+  assert.equal(Array.isArray(result.passedChecks), true);
+  assert.equal(Array.isArray(result.improvementChecks), true);
+});
 
 const jobDescription = `
 We are hiring a software engineer with 4+ years of experience. The candidate must

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
-import { analyzeResume, extractResumeForEditor } from '../controllers/analysis.controller.js';
+import { analyzeResume, checkResumeAts, extractResumeForEditor } from '../controllers/analysis.controller.js';
 
 const router = Router();
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -29,6 +29,7 @@ const analysisLimiter = rateLimit({
 });
 
 router.post('/extract', analysisLimiter, upload.single('resume'), extractResumeForEditor);
+router.post('/ats-check', analysisLimiter, upload.single('resume'), checkResumeAts);
 router.post('/', analysisLimiter, upload.single('resume'), analyzeResume);
 
 export default router;

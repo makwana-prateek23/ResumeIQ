@@ -126,6 +126,31 @@ function usRecruitingChecks(resume, searchability, resumeQuality) {
   return { score: clamp((Object.values(checks).filter(Boolean).length / Object.keys(checks).length) * 100), checks, standard: 'US private-sector recruiter readiness' };
 }
 
+export function analyzeResumeAts(resume) {
+  const searchability = searchabilityChecks(resume);
+  const resumeQuality = qualityChecks(resume);
+  const usRecruiting = usRecruitingChecks(resume, searchability, resumeQuality);
+  const atsScore = clamp((searchability.score * 0.45) + (usRecruiting.score * 0.55));
+  const checkGroups = [
+    ...Object.entries(searchability.checks).map(([key, passed]) => ({ key, passed, group: 'ATS readability' })),
+    ...Object.entries(usRecruiting.checks).map(([key, passed]) => ({ key, passed, group: 'U.S. recruiter readiness' }))
+  ];
+  return {
+    atsScore,
+    searchability,
+    resumeQuality,
+    usRecruiting,
+    passedChecks: checkGroups.filter((item) => item.passed),
+    improvementChecks: checkGroups.filter((item) => !item.passed),
+    details: {
+      detectedExperienceYears: resume.experienceYears,
+      experienceCalculationMethod: resume.experienceCalculation.method,
+      sectionsFound: resume.sectionsFound,
+      scoringScope: 'Standalone ATS readability and U.S. private-sector recruiter readiness; no job description matching'
+    }
+  };
+}
+
 function weightedOverall(breakdown) {
   const applicable = Object.entries(breakdown).filter(([, value]) => value !== null);
   const totalWeight = applicable.reduce((sum, [key]) => sum + BASE_WEIGHTS[key], 0);

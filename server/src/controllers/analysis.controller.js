@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { analyzeMatch } from '../services/ats.service.js';
+import { analyzeMatch, analyzeResumeAts } from '../services/ats.service.js';
 import { buildEditorResume, extractResumeText, parseResume } from '../services/resume.service.js';
 
 const requestSchema = z.object({
@@ -38,6 +38,19 @@ export async function analyzeResume(req, res) {
       skills: resume.skills,
       experienceYears: resume.experienceYears,
       experienceCalculation: resume.experienceCalculation,
+      sectionsFound: resume.sectionsFound,
+      editorData: buildEditorResume(resume)
+    }
+  });
+}
+
+export async function checkResumeAts(req, res) {
+  const resume = await parseUploadedResume(req);
+  return res.status(200).json({
+    ...analyzeResumeAts(resume),
+    resume: {
+      skills: resume.skills,
+      experienceYears: resume.experienceYears,
       sectionsFound: resume.sectionsFound,
       editorData: buildEditorResume(resume)
     }
