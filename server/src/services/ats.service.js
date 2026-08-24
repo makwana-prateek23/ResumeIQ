@@ -201,17 +201,37 @@ export function analyzeResumeAts(resume) {
   const redFlags = redFlagChecks(resume, resumeQuality);
   const essentialSections = essentialSectionChecks(resume, searchability);
   const atsEssentials = atsEssentialChecks(resume, searchability, resumeQuality);
-  const atsScore = clamp((searchability.score * 0.25) + (usRecruiting.score * 0.25) + (grammarAndWriting.score * 0.15) + (redFlags.score * 0.15) + (essentialSections.score * 0.1) + (atsEssentials.score * 0.1));
+  // Canonical scoring ledger: explanatory categories may reuse a signal, but
+  // every signal earns or loses points exactly once here.
   const checkGroups = [
-    ...Object.entries(searchability.checks).map(([key, passed]) => ({ key, passed, group: 'ATS readability' })),
-    ...Object.entries(usRecruiting.checks).map(([key, passed]) => ({ key, passed, group: 'U.S. recruiter readiness' })),
-    ...Object.entries(grammarAndWriting.checks).map(([key, passed]) => ({ key, passed, group: 'Grammar & writing' })),
-    ...Object.entries(redFlags.checks).map(([key, passed]) => ({ key, passed, group: 'Recruiter red flags' })),
-    ...Object.entries(essentialSections.checks).map(([key, passed]) => ({ key, passed, group: 'Essential U.S. sections' })),
-    ...Object.entries(atsEssentials.checks).map(([key, passed]) => ({ key, passed, group: 'ATS essentials' }))
+    { key: 'email', passed: searchability.checks.email, group: 'Parseability', weight: 7 },
+    { key: 'phone', passed: searchability.checks.phone, group: 'Parseability', weight: 5 },
+    { key: 'experienceSection', passed: searchability.checks.experienceSection, group: 'Parseability', weight: 8 },
+    { key: 'educationSection', passed: searchability.checks.educationSection, group: 'Parseability', weight: 5 },
+    { key: 'dates', passed: searchability.checks.dates, group: 'Parseability', weight: 7 },
+    { key: 'skills', passed: essentialSections.checks.skills, group: 'Parseability', weight: 8 },
+    { key: 'measurableResults', passed: resumeQuality.checks.measurableResults, group: 'Evidence quality', weight: 8 },
+    { key: 'scannableBullets', passed: resumeQuality.checks.scannableBullets, group: 'Evidence quality', weight: 6 },
+    { key: 'actionOrientedBullets', passed: resumeQuality.checks.actionOrientedBullets, group: 'Evidence quality', weight: 8 },
+    { key: 'conciseBullets', passed: resumeQuality.checks.conciseBullets, group: 'Evidence quality', weight: 4 },
+    { key: 'appropriateLength', passed: resumeQuality.checks.appropriateLength, group: 'Evidence quality', weight: 4 },
+    ...Object.entries(grammarAndWriting.checks).map(([key, passed]) => ({ key, passed, group: 'Writing quality', weight: 3 })),
+    { key: 'noSensitivePersonalDetails', passed: redFlags.checks.noSensitivePersonalDetails, group: 'Recruiter red flags', weight: 4 },
+    { key: 'noSalaryDetails', passed: redFlags.checks.noSalaryDetails, group: 'Recruiter red flags', weight: 3 },
+    { key: 'noReferencesStatement', passed: redFlags.checks.noReferencesStatement, group: 'Recruiter red flags', weight: 2 },
+    { key: 'noObjectiveCliches', passed: redFlags.checks.noObjectiveCliches, group: 'Recruiter red flags', weight: 3 },
+    { key: 'noContactInBody', passed: redFlags.checks.noContactInBody, group: 'Recruiter red flags', weight: 3 }
   ];
+  const totalWeight = checkGroups.reduce((sum, check) => sum + check.weight, 0);
+  const atsScore = clamp(checkGroups.reduce((sum, check) => sum + (check.passed ? check.weight : 0), 0) / totalWeight * 100);
+  const scoreBreakdown = Object.fromEntries([...new Set(checkGroups.map((check) => check.group))].map((group) => {
+    const checks = checkGroups.filter((check) => check.group === group);
+    const weight = checks.reduce((sum, check) => sum + check.weight, 0);
+    return [group, { score: clamp(checks.reduce((sum, check) => sum + (check.passed ? check.weight : 0), 0) / weight * 100), weight }];
+  }));
   return {
     atsScore,
+    scoreBreakdown,
     searchability,
     resumeQuality,
     usRecruiting,
@@ -225,7 +245,9 @@ export function analyzeResumeAts(resume) {
       detectedExperienceYears: resume.experienceYears,
       experienceCalculationMethod: resume.experienceCalculation.method,
       sectionsFound: resume.sectionsFound,
-      scoringScope: 'Standalone ATS readability and U.S. private-sector recruiter readiness; no job description matching'
+      scoringScope: 'Standalone ATS readability and U.S. private-sector recruiter readiness; no job description matching',
+      scoringMethod: 'One canonical checklist; each signal contributes to the score exactly once',
+      scoredCheckCount: checkGroups.length
     }
   };
 }

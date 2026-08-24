@@ -22,6 +22,10 @@ test('runs a standalone ATS audit without a job description', () => {
   assert.equal(result.details.scoringScope.includes('no job description matching'), true);
   assert.equal(Array.isArray(result.passedChecks), true);
   assert.equal(Array.isArray(result.improvementChecks), true);
+  const scoredChecks = [...result.passedChecks, ...result.improvementChecks];
+  assert.equal(new Set(scoredChecks.map((check) => check.key)).size, scoredChecks.length);
+  assert.equal(scoredChecks.length, result.details.scoredCheckCount);
+  assert.equal(result.details.scoringMethod, 'One canonical checklist; each signal contributes to the score exactly once');
   assert.ok(Number.isInteger(result.grammarAndWriting.score));
   assert.ok(Number.isInteger(result.redFlags.score));
   assert.ok(Number.isInteger(result.essentialSections.score));
