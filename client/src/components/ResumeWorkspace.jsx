@@ -194,7 +194,7 @@ function Field({ label, className = '', ...props }) {
 }
 
 function Block({ number, title, hint, children }) {
-  return <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="mb-4 flex gap-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-indigo-600 text-xs font-black text-white">{number}</span><div><h2 className="font-extrabold">{title}</h2><p className="mt-0.5 text-xs text-slate-500">{hint}</p></div></div>{children}</section>;
+  return <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"><div className="mb-4 flex gap-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-indigo-600 text-xs font-black text-white">{number}</span><div className="min-w-0"><h2 className="font-extrabold">{title}</h2><p className="mt-0.5 text-xs text-slate-500">{hint}</p></div></div>{children}</section>;
 }
 
 const sectionLabels = { summary: 'Summary', experience: 'Experience', skills: 'Skills', education: 'Education' };
@@ -623,7 +623,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
   ].filter((item) => item.value);
   const previewScale = 595 / layout.page.width;
   const previewStyle = { ...style, size: layout.bodySize, spacing: layout.spacing, sectionGap: layout.sectionGap, itemGap: layout.itemGap, bulletIndent: layout.bulletIndent };
-  return <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-7">
+  return <main className="mx-auto max-w-[1500px] px-3 py-5 sm:px-7 sm:py-7">
     <div aria-live="polite" className="sr-only">{exportMessage}</div>
     <CompletionCelebration show={showCelebration} confetti={celebration.confetti} reduceMotion={celebration.reduceMotion} onClose={() => setShowCelebration(false)} atsScore={atsReadiness.score} onDownloadPdf={downloadPdf} onDownloadWord={downloadWord} downloadingPdf={downloading} downloadingWord={downloadingWord} />
     <header className="relative mb-6 overflow-hidden rounded-3xl bg-slate-950 p-6 text-white sm:p-8"><div className="absolute inset-y-0 right-0 hidden w-[38%] lg:block"><div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/30 to-transparent" /><img src={resumeBlocks} alt="Resume content blocks combining into a finished document" className="h-full w-full object-cover opacity-75" /></div><div className="relative max-w-3xl"><p className="text-xs font-bold uppercase tracking-[0.2em] text-(--accent-eyebrow)">{mode === 'format' ? 'Resume formatting studio' : 'Guided resume builder'}</p><h1 className="mt-2 text-3xl font-black tracking-tight">{mode === 'format' ? 'Make every page clean and consistent.' : 'Build your resume, one simple block at a time.'}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Fill in the blocks on the left. Your professional, ATS-friendly document updates instantly on the right.</p><div className="mt-5 max-w-xs"><div className="flex justify-between text-xs font-bold"><span>Resume complete</span><span>{completion}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-(--accent-1) transition-all duration-500" style={{ width: `${completion}%` }} /></div></div></div></header>

@@ -194,7 +194,7 @@ function HomePage() {
 
   return <main className="relative min-h-screen overflow-hidden bg-[#f5f7fb] text-slate-900">
     <div className="pointer-events-none absolute -left-40 -top-40 h-96 w-96 rounded-full bg-cyan-200/40 blur-3xl" /><div className="pointer-events-none absolute right-0 top-64 h-96 w-96 rounded-full bg-indigo-200/40 blur-3xl" />
-    <div className="relative z-10 mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
+    <div className="relative z-10 mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-12">
       <header className="rounded-3xl bg-slate-950 px-7 py-8 text-white shadow-xl sm:px-10"><p className="text-xs font-bold uppercase tracking-[0.18em] text-(--accent-eyebrow)">Step 2 · Job match</p><h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Match your resume to a job description.</h1><p className="mt-3 max-w-2xl leading-7 text-slate-300">Use the resume already in your workspace or upload another one, then paste the complete job description below.</p></header>
 
       <div id="resume-review" className="mt-8 scroll-mt-28 grid items-start gap-8 lg:grid-cols-[420px_minmax(0,1fr)]">

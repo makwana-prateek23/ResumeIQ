@@ -44,7 +44,7 @@ export default function ThemePicker() {
     >
       <span aria-hidden="true" className="h-5 w-5 rounded-full" style={{ background: 'linear-gradient(135deg, var(--accent-1), var(--accent-2))' }} />
     </button>
-    {open && <div role="radiogroup" aria-label="Accent color" className="absolute right-0 top-12 z-65 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl">
+    {open && <div role="radiogroup" aria-label="Accent color" className="absolute right-0 top-12 z-65 w-[min(16rem,calc(100vw-1.5rem))] rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl">
       <p className="px-1 pb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Theme</p>
       <div className="grid grid-cols-1 gap-1.5">
         {accents.map((preset) => {

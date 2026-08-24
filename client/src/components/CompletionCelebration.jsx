@@ -2,7 +2,7 @@ export default function CompletionCelebration({ show, confetti, reduceMotion, on
   if (!show) return null;
 
   return <div className="fixed inset-0 z-70 grid place-items-center bg-slate-950/40 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="celebration-title">
-    <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white p-7 text-center shadow-2xl" style={{ animation: `${reduceMotion ? 'celebration-fade' : 'celebration-in'} 320ms ease-out` }}>
+    <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-5 text-center shadow-2xl sm:p-7" style={{ animation: `${reduceMotion ? 'celebration-fade' : 'celebration-in'} 320ms ease-out` }}>
       {confetti.length > 0 && <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-24 overflow-hidden">
         {confetti.map((piece) => <span
           key={piece.id}
