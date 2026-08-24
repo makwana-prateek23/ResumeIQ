@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useOutletContext } from 'react-router-dom';
-import { checkResumeAts, extractResume } from '../services/analysis.js';
+import { Link, useOutletContext } from 'react-router-dom';
+import { checkResumeAts } from '../services/analysis.js';
 import { getCareerArticles } from '../services/career-content.js';
 import landing3dResume from '../assets/landing-3d-resume.png';
 import useAuth from '../hooks/useAuth.js';
@@ -19,15 +19,12 @@ const testimonials = [
 ];
 
 export default function LandingPage() {
-  const { setResumeUploaded, setUploadedResumeFile, setEditorResumeData, setUploadMessage } = useOutletContext();
-  const [preparing, setPreparing] = useState(false);
-  const [error, setError] = useState('');
+  const { setResumeUploaded, setUploadedResumeFile, setEditorResumeData } = useOutletContext();
   const [atsFile, setAtsFile] = useState(null);
   const [atsResult, setAtsResult] = useState(null);
   const [atsError, setAtsError] = useState('');
   const [checkingAts, setCheckingAts] = useState(false);
   const [articles, setArticles] = useState(fallbackArticles);
-  const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -50,30 +47,8 @@ export default function LandingPage() {
     } finally { setCheckingAts(false); }
   }
 
-  async function uploadResume(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!isAuthenticated) { navigate('/login', { state: { from: '/' } }); return; }
-    setError('');
-    if (!/\.(pdf|docx)$/i.test(file.name)) return setError('Choose a PDF or Word (.docx) resume.');
-    if (file.size > 5 * 1024 * 1024) return setError('Resume file must be 5 MB or smaller.');
-    setPreparing(true);
-    setUploadedResumeFile(file);
-    setResumeUploaded(true);
-    try {
-      const { data } = await extractResume(file);
-      setEditorResumeData(data.editorData);
-      setUploadMessage('');
-      navigate('/resume');
-    } catch (requestError) {
-      setResumeUploaded(false);
-      setUploadedResumeFile(null);
-      setError(requestError.response?.data?.error ?? 'We could not read this resume. Please try another PDF or DOCX file.');
-    } finally { setPreparing(false); }
-  }
-
   return <main className="landing-page mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
-    <section className="landing-hero-3d relative overflow-hidden rounded-[2rem] text-white shadow-2xl" style={{ backgroundImage: `url(${landing3dResume})` }}><div className="landing-hero-wash absolute inset-0" aria-hidden="true" /><div className="landing-depth-grid absolute inset-0" aria-hidden="true" /><div className="relative grid min-h-[520px] items-center lg:grid-cols-[1.05fr_.95fr]"><div className="z-10 p-8 sm:p-12 lg:py-16"><p className="text-xs font-bold uppercase tracking-[0.2em] text-(--accent-eyebrow)">Your resume workspace</p><h1 className="mt-4 max-w-2xl text-4xl font-black leading-tight tracking-tight drop-shadow-2xl sm:text-6xl">Start with your resume. Finish ready to apply.</h1><p className="mt-5 max-w-xl text-lg leading-8 text-slate-200">Upload an existing resume or build a new one. Edit the content, check ATS readiness, match a job, and export from one workspace.</p><div className="mt-7 flex flex-wrap gap-3">{isAuthenticated ? <label className="cursor-pointer rounded-xl bg-white px-5 py-3 text-sm font-black text-(--accent-solid) shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-xl"><input type="file" className="sr-only" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={uploadResume} disabled={preparing} />{preparing ? 'Preparing your resume…' : 'Upload existing resume'}</label> : <Link to="/login" state={{ from: '/' }} className="rounded-xl bg-white px-5 py-3 text-sm font-black text-(--accent-solid) shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-xl">🔒 Sign in to upload</Link>}<Link to="/create" className="rounded-xl border border-white/25 bg-white/10 px-5 py-3 text-sm font-black text-white shadow-lg backdrop-blur transition duration-300 hover:-translate-y-1 hover:bg-white/20">{!isAuthenticated && '🔒 '}Create new resume</Link></div>{error && <p role="alert" className="mt-4 rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-sm font-bold text-rose-200">{error}</p>}</div><div className="pointer-events-none relative hidden h-full lg:block"><div className="hero-float hero-float-score"><span className="text-[10px] font-black uppercase tracking-wider text-cyan-200">ATS ready</span><strong className="mt-1 block text-2xl">92%</strong></div><div className="hero-float hero-float-match"><span className="text-lg">✓</span><span className="text-xs font-black">Skills matched</span></div><div className="hero-float hero-float-export"><span className="text-lg">↗</span><span className="text-xs font-black">Ready to export</span></div></div></div></section>
+    <section className="landing-hero-3d relative overflow-hidden rounded-[2rem] text-white shadow-2xl" style={{ backgroundImage: `url(${landing3dResume})` }}><div className="landing-hero-wash absolute inset-0" aria-hidden="true" /><div className="landing-depth-grid absolute inset-0" aria-hidden="true" /><div className="relative grid min-h-[520px] items-center lg:grid-cols-[1.05fr_.95fr]"><div className="z-10 p-8 sm:p-12 lg:py-16"><p className="text-xs font-bold uppercase tracking-[0.2em] text-(--accent-eyebrow)">Free ATS resume check · No login required</p><h1 className="mt-4 max-w-2xl text-4xl font-black leading-tight tracking-tight drop-shadow-2xl sm:text-6xl">See what hiring systems see—before you apply.</h1><p className="mt-5 max-w-xl text-lg leading-8 text-slate-200">Get an instant ATS readiness score, uncover formatting and content issues, and learn exactly what to improve before your resume reaches a recruiter.</p><div className="mt-7"><Link to="/ats" className="hero-ats-cta group inline-flex items-center gap-3 rounded-2xl bg-cyan-400 px-6 py-4 text-base font-black text-slate-950 shadow-xl shadow-cyan-950/30 transition duration-300 hover:-translate-y-1 hover:bg-cyan-300 hover:shadow-2xl">Check my ATS score <span className="grid h-7 w-7 place-items-center rounded-full bg-slate-950 text-sm text-white transition group-hover:translate-x-1">→</span></Link><p className="mt-3 text-xs font-bold text-slate-300">Free to check · PDF or DOCX · Results in seconds</p></div></div><div className="pointer-events-none relative hidden h-full lg:block"><div className="hero-float hero-float-score"><span className="text-[10px] font-black uppercase tracking-wider text-cyan-200">ATS ready</span><strong className="mt-1 block text-2xl">92%</strong></div><div className="hero-float hero-float-match"><span className="text-lg">✓</span><span className="text-xs font-black">Skills matched</span></div><div className="hero-float hero-float-export"><span className="text-lg">↗</span><span className="text-xs font-black">Ready to export</span></div></div></div></section>
     <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <Link to="/resume" className="service-card group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><span className="text-xs font-black uppercase tracking-wider text-indigo-600">Workspace</span>{!isAuthenticated && <span aria-label="Login required">🔒</span>}</div><h2 className="mt-2 text-xl font-black transition group-hover:text-indigo-700">Edit your content</h2><p className="mt-2 text-sm leading-6 text-slate-500">Turn an uploaded resume into editable summary, experience, skills, education, and custom sections.</p><span className="mt-4 inline-block text-sm font-black text-indigo-700">{isAuthenticated ? 'Open editor' : 'Sign in to access'} →</span></Link>
       <Link to="/ats" className="service-card group relative overflow-hidden rounded-2xl border border-cyan-300 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-6 text-white shadow-lg shadow-cyan-100"><div aria-hidden="true" className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-cyan-400/20 blur-2xl transition duration-500 group-hover:scale-150" /><div className="relative"><div className="flex items-center justify-between gap-3"><span className="text-xs font-black uppercase tracking-wider text-cyan-300">Public tool</span><span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-200">No login</span></div><h2 className="mt-3 text-2xl font-black">Resume ATS Checker</h2><p className="mt-2 text-sm leading-6 text-slate-300">Audit resume structure, searchability, achievement evidence, and U.S. recruiter readiness.</p><span className="mt-5 inline-flex rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-black text-slate-950">Check my resume →</span></div></Link>
