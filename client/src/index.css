@@ -155,15 +155,6 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
 .landing-page > section > div > div > h2,
 .landing-page > section > div > h2 { color: white; }
 
-/* Bottom extension callout uses the same dark glass language as the page. */
-.landing-page > section:last-child {
-  border-color: rgba(103, 232, 249, .2);
-  background: linear-gradient(135deg, rgba(15, 23, 42, .92), rgba(8, 47, 73, .82));
-  box-shadow: inset 0 1px rgba(255, 255, 255, .08), 0 20px 50px -35px rgba(34, 211, 238, .65);
-}
-.landing-page > section:last-child p:first-child { color: white; }
-.landing-page > section:last-child p:last-child { color: #a5f3fc; }
-
 /* Home-page ATS showcase */
 .landing-page section.border-cyan-200 {
   position: relative;
