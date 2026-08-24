@@ -112,23 +112,6 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
   .no-print, .no-print * { display: none !important; }
   .print-report section, .print-report article { break-inside: avoid; box-shadow: none !important; }
 }
-@keyframes testimonial-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(calc(-50% - .5rem)); }
-}
-
-.testimonial-track {
-  animation: testimonial-scroll 32s linear infinite;
-}
-
-.testimonial-track:hover {
-  animation-play-state: paused;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .testimonial-track { animation: none; }
-}
-
 @keyframes auth-float { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(30px, -24px, 0) scale(1.08); } }
 @keyframes auth-arrive { from { opacity: 0; transform: translateY(22px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .auth-stage { background-image: radial-gradient(circle at 15% 15%, rgba(34,211,238,.16), transparent 32%), radial-gradient(circle at 80% 70%, rgba(99,102,241,.22), transparent 34%); }
@@ -227,10 +210,6 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
 .landing-page > section > div > div > h2,
 .landing-page > section > div > h2 { color: white; }
 
-/* The reading cards stay light for long-form readability while floating on
-   the same continuous page atmosphere. */
-.landing-page .article-card { box-shadow: 0 24px 55px -32px rgba(34, 211, 238, .5); }
-
 /* Bottom extension callout uses the same dark glass language as the page. */
 .landing-page > section:last-child {
   border-color: rgba(103, 232, 249, .2);
@@ -239,24 +218,6 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
 }
 .landing-page > section:last-child p:first-child { color: white; }
 .landing-page > section:last-child p:last-child { color: #a5f3fc; }
-
-.article-card {
-  display: flex;
-  height: 100%;
-  flex-direction: column;
-  border: 1px solid color-mix(in srgb, var(--accent-solid) 30%, white);
-  background: linear-gradient(145deg, white 24%, color-mix(in srgb, var(--accent-soft-bg) 78%, white));
-  box-shadow: 0 12px 30px color-mix(in srgb, var(--accent-solid) 12%, transparent);
-  transition: transform .38s cubic-bezier(.2,.8,.2,1), box-shadow .38s ease, border-color .38s ease;
-}
-.article-card-media { flex: none; background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); }
-.article-card > div:last-child { display: flex; flex: 1; flex-direction: column; }
-.article-card > div:last-child > p { margin-bottom: 1.25rem; }
-.article-card > div:last-child > span:last-child { align-self: flex-start; margin-top: auto; }
-.article-card:nth-child(3n+2) .article-card-media { background: linear-gradient(135deg, var(--accent-2), var(--accent-solid-hover)); }
-.article-card:nth-child(3n+3) .article-card-media { background: linear-gradient(135deg, var(--accent-solid-hover), var(--accent-1)); }
-.article-card:hover { transform: translateY(-10px) rotate(.25deg); border-color: var(--accent-solid); box-shadow: 0 24px 55px color-mix(in srgb, var(--accent-solid) 22%, transparent); }
-@media (prefers-reduced-motion: reduce) { .article-card { transition: none; } .article-card:hover { transform: none; } }
 
 /* Home-page ATS showcase */
 .landing-page section.border-cyan-200 {
@@ -401,9 +362,6 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
   .landing-hero-3d p { max-width: 100%; }
   .landing-hero-3d a,
   .landing-hero-3d label { width: 100%; text-align: center; }
-
-  .testimonial-track { animation-duration: 42s; }
-  .testimonial-track blockquote { width: min(18rem, calc(100vw - 3rem)); }
 
   .auth-card { border-radius: 1.5rem; }
   .auth-orb-one, .auth-orb-two { width: 12rem; height: 12rem; }
