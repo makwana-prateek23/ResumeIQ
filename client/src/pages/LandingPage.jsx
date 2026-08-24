@@ -1,22 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { checkResumeAts } from '../services/analysis.js';
-import { getCareerArticles } from '../services/career-content.js';
 import landing3dResume from '../assets/landing-3d-resume.png';
 import useAuth from '../hooks/useAuth.js';
-
-const fallbackArticles = [
-  { id: 'resume', title: 'Build a resume recruiters can scan quickly', description: 'Use clear sections, specific outcomes, and a simple reading order.', url: '/resume', author: 'ResumeIQ', readingTime: 4 },
-  { id: 'interview', title: 'Turn your experience into interview stories', description: 'Prepare concise situation, action, and measurable result examples.', url: '/match', author: 'ResumeIQ', readingTime: 5 },
-  { id: 'search', title: 'Make every application more focused', description: 'Match your strongest evidence to the role instead of adding keyword clutter.', url: '/ats', author: 'ResumeIQ', readingTime: 3 }
-];
-
-const testimonials = [
-  { quote: 'The ATS review showed me exactly which sections were difficult to scan.', name: 'Jordan M.', role: 'Product analyst' },
-  { quote: 'I kept my original formatting and made every bullet much more specific.', name: 'Priya S.', role: 'Software engineer' },
-  { quote: 'Separating resume health from job matching made the feedback much clearer.', name: 'Marcus T.', role: 'Operations manager' },
-  { quote: 'The editor helped me keep custom sections that other builders removed.', name: 'Elena R.', role: 'UX designer' }
-];
 
 export default function LandingPage() {
   const { setResumeUploaded, setUploadedResumeFile, setEditorResumeData } = useOutletContext();
@@ -24,14 +10,7 @@ export default function LandingPage() {
   const [atsResult, setAtsResult] = useState(null);
   const [atsError, setAtsError] = useState('');
   const [checkingAts, setCheckingAts] = useState(false);
-  const [articles, setArticles] = useState(fallbackArticles);
   const { isAuthenticated } = useAuth();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    getCareerArticles(controller.signal).then((items) => items.length && setArticles(items)).catch(() => {});
-    return () => controller.abort();
-  }, []);
 
   async function runAtsCheck(event) {
     event.preventDefault();
@@ -59,8 +38,6 @@ export default function LandingPage() {
       <div className="grid lg:grid-cols-[1.05fr_.95fr]"><div className="bg-slate-950 p-7 text-white sm:p-10"><p className="text-xs font-black uppercase tracking-[.2em] text-cyan-300">Instant resume health check</p><h2 className="mt-3 text-3xl font-black sm:text-4xl">Check your ATS score here</h2><p className="mt-3 max-w-xl leading-7 text-slate-300">No job description needed. Review structure, searchability, evidence, and U.S. recruiter readiness directly from the home page.</p><form onSubmit={runAtsCheck} className="mt-6"><label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed border-slate-600 bg-white/5 p-4 transition hover:border-cyan-300 hover:bg-white/10"><span><span className="block text-sm font-black">{atsFile?.name ?? 'Choose PDF or DOCX'}</span><span className="mt-1 block text-xs text-slate-400">Maximum 5 MB</span></span><span className="rounded-xl bg-cyan-400 px-3 py-2 text-xs font-black text-slate-950">Browse</span><input type="file" className="sr-only" accept=".pdf,.docx" onChange={(event) => { const selected = event.target.files?.[0] ?? null; setAtsError(''); setAtsResult(null); if (selected?.size > 5 * 1024 * 1024) return setAtsError('Resume must be 5 MB or smaller.'); setAtsFile(selected); }} /></label>{atsError && <p role="alert" className="mt-3 rounded-xl bg-rose-400/10 p-3 text-sm font-bold text-rose-200">{atsError}</p>}<button disabled={checkingAts} className="mt-4 w-full rounded-xl bg-cyan-400 px-5 py-3.5 text-sm font-black text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-300 disabled:opacity-60">{checkingAts ? 'Checking resume…' : 'Check ATS score'}</button></form></div>
       <div className="grid min-h-80 place-items-center bg-gradient-to-br from-cyan-50 to-indigo-50 p-8 text-center">{atsResult ? <div className="w-full max-w-md"><div className="mx-auto grid h-32 w-32 place-items-center rounded-full bg-white text-4xl font-black text-cyan-700 shadow-xl ring-8 ring-cyan-100">{atsResult.atsScore}%</div><h3 className="mt-6 text-2xl font-black text-slate-950">Your resume readiness score</h3><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-bold text-slate-500">Readability</p><p className="mt-1 text-2xl font-black">{atsResult.searchability.score}%</p></div><div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-bold text-slate-500">Recruiter ready</p><p className="mt-1 text-2xl font-black">{atsResult.usRecruiting.score}%</p></div></div><Link to="/ats" className="mt-5 inline-block text-sm font-black text-indigo-700">View the complete audit →</Link></div> : <div className="max-w-sm"><span className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-cyan-100 text-2xl font-black text-cyan-800">ATS</span><h3 className="mt-5 text-2xl font-black">A clear score, useful checks</h3><p className="mt-2 leading-7 text-slate-500">Upload your resume to reveal its standalone ATS audit without leaving this page.</p></div>}</div></div>
     </section>
-    <section className="mt-14"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.2em] text-(--accent-solid)">Career reading</p><h2 className="mt-2 text-3xl font-black text-slate-950">Latest job-search articles</h2></div><span className="hidden rounded-full border border-white/70 bg-white/70 px-3 py-1.5 text-xs font-bold text-(--accent-soft-text) shadow-sm backdrop-blur sm:block">Live from DEV Community</span></div><div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{articles.slice(0, 6).map((article, index) => <a key={article.id} href={article.url} target={String(article.url).startsWith('http') ? '_blank' : undefined} rel="noreferrer" className="article-card group overflow-hidden rounded-3xl"> <div className="article-card-media relative overflow-hidden">{article.image ? <img src={article.image} alt="" className="h-44 w-full object-cover transition duration-700 group-hover:scale-110" /> : <div className="grid h-44 place-items-center text-5xl font-black text-white/90">{String(index + 1).padStart(2, '0')}</div>}<span className="absolute left-4 top-4 rounded-full border border-white/30 bg-slate-950/70 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em] text-white backdrop-blur">Career insight</span></div><div className="relative p-6"><div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-(--accent-soft-text)"><span>{article.author}</span><span>•</span><span>{article.readingTime || 4} min read</span></div><h3 className="mt-3 text-xl font-black leading-snug text-slate-950 transition duration-300 group-hover:text-(--accent-solid)">{article.title}</h3><p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{article.description}</p><span className="mt-5 inline-flex items-center gap-2 rounded-xl bg-(--accent-soft-bg) px-3.5 py-2 text-sm font-black text-(--accent-soft-text) transition duration-300 group-hover:gap-3 group-hover:bg-(--accent-solid) group-hover:text-white">Read article <span>→</span></span></div></a>)}</div></section>
-    <section className="mt-14 overflow-hidden rounded-[2rem] bg-slate-950 py-10 text-white"><div className="px-7 sm:px-10"><p className="text-xs font-black uppercase tracking-[.2em] text-cyan-300">What job seekers say</p><h2 className="mt-2 text-3xl font-black">Built for real resume work</h2></div><div className="testimonial-track mt-7 flex w-max gap-4 px-4">{[...testimonials, ...testimonials].map((item, index) => <blockquote key={`${item.name}-${index}`} className="w-[300px] shrink-0 rounded-2xl border border-white/10 bg-white/5 p-5 sm:w-[360px]"><p className="leading-7 text-slate-200">“{item.quote}”</p><footer className="mt-5"><p className="font-black">{item.name}</p><p className="text-xs text-cyan-300">{item.role}</p></footer></blockquote>)}</div></section>
     <section className="mt-8 flex flex-col gap-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-6 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-black text-indigo-950">Using the Chrome extension?</p><p className="mt-1 text-sm text-indigo-700">Use it only for job-description matching and missing-keyword checks.</p></div>{isAuthenticated ? <a href="/downloads/resumeiq-extension.zip" download className="rounded-xl bg-indigo-600 px-5 py-3 text-center text-sm font-bold text-white transition hover:-translate-y-1 hover:bg-indigo-700">Download extension</a> : <Link to="/login" className="rounded-xl bg-indigo-600 px-5 py-3 text-center text-sm font-bold text-white transition hover:-translate-y-1 hover:bg-indigo-700">🔒 Sign in to download</Link>}</section>
   </main>;
 }
