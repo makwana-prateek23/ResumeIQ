@@ -40,9 +40,10 @@ export default function ThemePicker() {
       aria-expanded={open}
       aria-label="Choose theme color"
       title="Choose theme color"
-      className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/10 text-white shadow-lg shadow-slate-950/20 transition hover:-translate-y-0.5 hover:border-cyan-300/40 hover:bg-white/15"
     >
-      <span aria-hidden="true" className="h-5 w-5 rounded-full" style={{ background: 'linear-gradient(135deg, var(--accent-1), var(--accent-2))' }} />
+      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a9 9 0 0 0 0 18h1.4a1.8 1.8 0 0 0 1.2-3.2 1.8 1.8 0 0 1 1.2-3.2H18A3 3 0 0 0 21 12a9 9 0 0 0-9-9Z"/><circle cx="7.5" cy="10" r=".7" fill="currentColor" stroke="none"/><circle cx="10" cy="6.8" r=".7" fill="currentColor" stroke="none"/><circle cx="14" cy="6.8" r=".7" fill="currentColor" stroke="none"/><circle cx="17" cy="9.5" r=".7" fill="currentColor" stroke="none"/></svg>
+      <span aria-hidden="true" className="absolute bottom-1 right-1 h-2.5 w-2.5 rounded-full ring-2 ring-slate-900" style={{ background: 'linear-gradient(135deg, var(--accent-1), var(--accent-2))' }} />
     </button>
     {open && <div role="radiogroup" aria-label="Accent color" className="absolute right-0 top-12 z-65 w-[min(16rem,calc(100vw-1.5rem))] rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl">
       <p className="px-1 pb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Theme</p>
