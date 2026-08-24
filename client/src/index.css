@@ -245,12 +245,11 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
 .landing-page section.border-cyan-200 {
   position: relative;
   isolation: isolate;
-  border-color: color-mix(in srgb, var(--accent-1) 48%, white);
-  background:
-    radial-gradient(circle at 78% 35%, color-mix(in srgb, var(--accent-1) 17%, transparent), transparent 22rem),
-    radial-gradient(circle at 18% 110%, color-mix(in srgb, var(--accent-2) 32%, transparent), transparent 25rem),
-    linear-gradient(125deg, #020617, #0f172a 56%, #082f49);
-  box-shadow: 0 28px 70px -34px color-mix(in srgb, var(--accent-solid) 38%, transparent);
+  overflow: visible;
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .landing-page section.border-cyan-200::before {
