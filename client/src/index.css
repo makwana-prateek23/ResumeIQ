@@ -179,11 +179,33 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
 }
 @keyframes auth-float { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(30px, -24px, 0) scale(1.08); } }
 @keyframes auth-arrive { from { opacity: 0; transform: translateY(22px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-.auth-stage { background-image: radial-gradient(circle at 15% 15%, rgba(34,211,238,.16), transparent 32%), radial-gradient(circle at 80% 70%, rgba(99,102,241,.22), transparent 34%); }
+.auth-stage {
+  background-image:
+    radial-gradient(circle at 15% 15%, color-mix(in srgb, var(--accent-1) 20%, transparent), transparent 32%),
+    radial-gradient(circle at 80% 70%, color-mix(in srgb, var(--accent-2) 25%, transparent), transparent 34%);
+}
 .auth-orb { position: absolute; border-radius: 9999px; filter: blur(2px); opacity: .35; animation: auth-float 9s ease-in-out infinite; }
-.auth-orb-one { width: 18rem; height: 18rem; left: -5rem; bottom: -5rem; background: #22d3ee; }
-.auth-orb-two { width: 22rem; height: 22rem; right: -6rem; top: -8rem; background: #6366f1; animation-delay: -4s; }
+.auth-orb-one { width: 18rem; height: 18rem; left: -5rem; bottom: -5rem; background: var(--accent-1); }
+.auth-orb-two { width: 22rem; height: 22rem; right: -6rem; top: -8rem; background: var(--accent-2); animation-delay: -4s; }
 .auth-card { animation: auth-arrive .65s cubic-bezier(.2,.8,.2,1) both; }
+.auth-stage > section:first-of-type > a > span:first-child { background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); }
+.auth-stage > section:first-of-type > p:first-of-type { color: var(--accent-eyebrow); }
+.auth-stage > section:first-of-type .text-cyan-300 { color: var(--accent-eyebrow); }
+.auth-card > p:first-of-type { color: var(--accent-solid); }
+.auth-card a { color: var(--accent-soft-text); }
+.auth-card input:focus {
+  border-color: var(--accent-solid);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-solid) 15%, transparent);
+}
+.auth-card > div:nth-of-type(2) > a:hover {
+  border-color: color-mix(in srgb, var(--accent-solid) 42%, white);
+  box-shadow: 0 12px 24px -14px color-mix(in srgb, var(--accent-solid) 48%, transparent);
+}
+.auth-card form button {
+  background: linear-gradient(90deg, var(--accent-2), var(--accent-1));
+  box-shadow: 0 12px 25px -12px color-mix(in srgb, var(--accent-solid) 65%, transparent);
+}
+.auth-card form button:hover { box-shadow: 0 16px 30px -12px color-mix(in srgb, var(--accent-solid) 78%, transparent); }
 @media (prefers-reduced-motion: reduce) { .auth-orb, .auth-card { animation: none; } }
 
 .landing-page {
