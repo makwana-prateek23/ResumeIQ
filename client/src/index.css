@@ -206,7 +206,24 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
   clip-path: inset(0 -100vmax);
 }
 
-.landing-page > section:not(.landing-hero-3d) { position: relative; z-index: 1; }
+.landing-page::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0 -2rem;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 12% 17%, transparent 0 9rem, rgba(34, 211, 238, .1) 9.05rem 9.12rem, transparent 9.17rem),
+    radial-gradient(circle at 88% 35%, transparent 0 13rem, rgba(99, 102, 241, .11) 13.05rem 13.12rem, transparent 13.17rem),
+    radial-gradient(circle at 22% 64%, transparent 0 16rem, rgba(34, 211, 238, .07) 16.05rem 16.12rem, transparent 16.17rem),
+    radial-gradient(circle at 82% 88%, transparent 0 11rem, rgba(99, 102, 241, .1) 11.05rem 11.12rem, transparent 11.17rem),
+    linear-gradient(rgba(103, 232, 249, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(103, 232, 249, .035) 1px, transparent 1px);
+  background-size: auto, auto, auto, auto, 56px 56px, 56px 56px;
+  mask-image: linear-gradient(to bottom, transparent, black 8%, black 94%, transparent);
+}
+
+.landing-page > section { position: relative; z-index: 1; }
 .landing-page > section > div > div > h2,
 .landing-page > section > div > h2 { color: white; }
 
