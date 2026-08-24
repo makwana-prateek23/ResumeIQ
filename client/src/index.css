@@ -286,7 +286,6 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
 .landing-page section.border-cyan-200 > .grid > div:last-child {
   position: relative;
   overflow: hidden;
-  border-left: 1px solid rgba(103, 232, 249, .12);
   background:
     radial-gradient(circle at 50% 42%, rgba(255, 255, 255, .055) 0 7rem, transparent 7.1rem),
     radial-gradient(circle at 50% 42%, rgba(34, 211, 238, .075) 0 12rem, transparent 12.1rem);
@@ -340,7 +339,6 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
 @media (max-width: 1023px) { .landing-hero-3d { background-position: 66% center; } .landing-hero-wash { background: linear-gradient(90deg, rgba(2,6,23,.97), rgba(2,6,23,.76)); } }
 @media (max-width: 1023px) {
   .landing-page section.border-cyan-200::before, .landing-page section.border-cyan-200::after { display: none; }
-  .landing-page section.border-cyan-200 > .grid > div:last-child { border-top: 1px solid rgba(103, 232, 249, .12); border-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .hero-float { animation: none; } }
 
