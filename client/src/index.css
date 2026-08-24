@@ -155,111 +155,6 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
 .landing-page > section > div > div > h2,
 .landing-page > section > div > h2 { color: white; }
 
-/* Home-page ATS showcase */
-.landing-page section.border-cyan-200 {
-  position: relative;
-  isolation: isolate;
-  overflow: visible;
-  border-color: transparent;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.landing-page section.border-cyan-200::before {
-  display: none;
-}
-
-.landing-page section.border-cyan-200::after {
-  display: none;
-}
-
-.landing-page section.border-cyan-200 > .grid > div:first-child {
-  position: relative;
-  overflow: hidden;
-  background: transparent;
-}
-
-.landing-page section.border-cyan-200 > .grid > div:first-child::after {
-  content: "";
-  position: absolute;
-  right: -4rem;
-  bottom: -5rem;
-  width: 14rem;
-  height: 14rem;
-  border: 1px solid rgba(103, 232, 249, .22);
-  border-radius: 9999px;
-  box-shadow: 0 0 0 2.5rem rgba(103, 232, 249, .035), 0 0 0 5rem rgba(103, 232, 249, .025);
-  pointer-events: none;
-}
-
-.landing-page section.border-cyan-200 form label {
-  position: relative;
-  z-index: 1;
-  border-color: rgba(103, 232, 249, .38);
-  background: rgba(255, 255, 255, .07);
-  box-shadow: inset 0 1px rgba(255, 255, 255, .08);
-}
-
-.landing-page section.border-cyan-200 form button {
-  position: relative;
-  z-index: 1;
-  background: linear-gradient(90deg, var(--accent-1), #22d3ee 52%, var(--accent-1));
-  background-size: 200% 100%;
-  box-shadow: 0 14px 30px -12px color-mix(in srgb, var(--accent-1) 72%, transparent);
-  transition: transform .25s ease, box-shadow .25s ease, background-position .4s ease;
-}
-
-.landing-page section.border-cyan-200 form button:hover {
-  background-position: 100% 0;
-  box-shadow: 0 18px 34px -12px color-mix(in srgb, var(--accent-1) 88%, transparent);
-}
-
-.landing-page section.border-cyan-200 > .grid > div:last-child {
-  position: relative;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, .055) 0 7rem, transparent 7.1rem),
-    radial-gradient(circle at 50% 42%, rgba(34, 211, 238, .075) 0 12rem, transparent 12.1rem);
-  color: white;
-}
-
-.landing-page section.border-cyan-200 > .grid > div:last-child::before,
-.landing-page section.border-cyan-200 > .grid > div:last-child::after {
-  content: "";
-  position: absolute;
-  width: 7rem;
-  height: 7rem;
-  border: 1px solid color-mix(in srgb, var(--accent-solid) 16%, transparent);
-  border-radius: 1.75rem;
-  transform: rotate(18deg);
-}
-
-.landing-page section.border-cyan-200 > .grid > div:last-child::before { top: -3.5rem; right: 8%; }
-.landing-page section.border-cyan-200 > .grid > div:last-child::after { bottom: -4rem; left: 8%; }
-
-.landing-page section.border-cyan-200 > .grid > div:last-child > div {
-  position: relative;
-  z-index: 1;
-}
-
-.landing-page section.border-cyan-200 > .grid > div:last-child h3 { color: white; }
-.landing-page section.border-cyan-200 > .grid > div:last-child p { color: #cbd5e1; }
-.landing-page section.border-cyan-200 > .grid > div:last-child a { color: #67e8f9; }
-.landing-page section.border-cyan-200 > .grid > div:last-child [class~="bg-white"] {
-  border: 1px solid rgba(103, 232, 249, .18);
-  background: rgba(255, 255, 255, .08);
-  color: white;
-  box-shadow: inset 0 1px rgba(255, 255, 255, .1);
-}
-
-.landing-page section.border-cyan-200 > .grid > div:last-child > div > span:first-child {
-  border: 1px solid rgba(103, 232, 249, .35);
-  background: linear-gradient(145deg, rgba(255,255,255,.13), rgba(34,211,238,.09));
-  color: #67e8f9;
-  box-shadow: 0 18px 35px -18px rgba(34, 211, 238, .55), inset 0 1px rgba(255,255,255,.12);
-}
-
 @keyframes hero-card-float { 0%, 100% { transform: translate3d(0,0,28px) rotateX(2deg) rotateY(-4deg); } 50% { transform: translate3d(0,-14px,46px) rotateX(-2deg) rotateY(3deg); } }
 .landing-hero-3d { background-color: #020617; background-size: cover; background-position: center; perspective: 1100px; transform-style: preserve-3d; }
 .landing-hero-wash { background: linear-gradient(90deg, rgba(2,6,23,.98) 0%, rgba(2,6,23,.9) 38%, rgba(2,6,23,.34) 68%, rgba(2,6,23,.08) 100%), linear-gradient(135deg, color-mix(in srgb, var(--accent-1) 18%, transparent), transparent 48%); }
@@ -269,9 +164,6 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
 .hero-float-match { right: 5%; bottom: 28%; animation-delay: -3s; }
 .hero-float-export { left: 8%; bottom: 12%; animation-delay: -4.5s; }
 @media (max-width: 1023px) { .landing-hero-3d { background-position: 66% center; } .landing-hero-wash { background: linear-gradient(90deg, rgba(2,6,23,.97), rgba(2,6,23,.76)); } }
-@media (max-width: 1023px) {
-  .landing-page section.border-cyan-200::before, .landing-page section.border-cyan-200::after { display: none; }
-}
 @media (prefers-reduced-motion: reduce) { .hero-float { animation: none; } }
 
 /* Small-screen safeguards shared by every route. */
@@ -301,9 +193,6 @@ article.shadow-2xl .flex.flex-wrap.justify-between > span:last-child {
 
   .auth-card { border-radius: 1.5rem; }
   .auth-orb-one, .auth-orb-two { width: 12rem; height: 12rem; }
-
-  .landing-page section.border-cyan-200::before,
-  .landing-page section.border-cyan-200::after { display: none; }
 
   .print-report,
   main,
