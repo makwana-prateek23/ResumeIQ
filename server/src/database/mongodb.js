@@ -11,7 +11,10 @@ async function connect() {
   await Promise.all([
     database.collection('users').createIndex({ email: 1 }, { unique: true }),
     database.collection('oauthAccounts').createIndex({ provider: 1, providerId: 1 }, { unique: true }),
-    database.collection('oauthAccounts').createIndex({ userId: 1 })
+    database.collection('oauthAccounts').createIndex({ userId: 1 }),
+    database.collection('jobBenchmarks').createIndex({ hash: 1 }, { unique: true }),
+    database.collection('jobBenchmarks').createIndex({ companyName: 1, targetRole: 1, updatedAt: -1 }),
+    database.collection('atsProfiles').createIndex({ email: 1, targetRoleKey: 1 }, { unique: true })
   ]);
   return database;
 }
