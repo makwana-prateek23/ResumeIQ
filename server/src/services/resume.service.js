@@ -246,28 +246,52 @@ export function buildEditorResume(resume) {
   // don't get silently dropped or misread as a new job heading.
   const bulletPrefix = /^\s*(?:[-•▪◦*‣⁃●○∙·]|\d+[.)]|[^\w\s]{1,2}(?=\s))\s+/;
   const experience = [];
-  for (const line of experienceLines) {
+  const roleWords = /\b(?:engineer|developer|development|manager|analyst|designer|consultant|intern|specialist|architect|administrator|scientist|lead|director|coordinator|officer|associate|executive|president|accountant|recruiter)\b/i;
+  const headingSeparator = /\s+(?:—|–|-|\bat\b)\s+/i;
+  const shortHeading = (value) => value && value.length <= 140 && !bulletPrefix.test(value) && !/[.!?]$/.test(value.replace(/\b(?:Inc|Ltd|Corp)\.$/i, ''));
+  for (let lineIndex = 0; lineIndex < experienceLines.length; lineIndex += 1) {
+    let line = experienceLines[lineIndex];
+    // PDF extraction commonly puts the title and employer on separate lines.
+    // Combine adjacent heading candidates before interpreting dates or bullets.
+    const next = experienceLines[lineIndex + 1];
+    const currentBody = line.replace(datePattern, '').replace(/[|,]+\s*$/, '').trim();
+    const nextBody = next?.replace(datePattern, '').replace(/[|,]+\s*$/, '').trim();
+    if (shortHeading(currentBody) && shortHeading(nextBody)
+      && !currentBody.includes('|') && !nextBody.includes('|')
+      && !headingSeparator.test(currentBody) && !headingSeparator.test(nextBody)
+      && roleWords.test(currentBody) !== roleWords.test(nextBody)
+      && !/[,]|^(?:remote|hybrid|on.?site)$/i.test(roleWords.test(currentBody) ? nextBody : currentBody)
+      && (!experience.length || !experience.at(-1).bullets.length || line.match(datePattern) || next.match(datePattern) || experienceLines[lineIndex + 2]?.match(datePattern))) {
+      const titleLine = roleWords.test(currentBody) ? currentBody : nextBody;
+      const employerLine = roleWords.test(currentBody) ? nextBody : currentBody;
+      const dates = line.match(datePattern)?.[0] || next.match(datePattern)?.[0] || '';
+      line = `${titleLine} — ${employerLine}${dates ? ` | ${dates}` : ''}`;
+      lineIndex += 1;
+    }
     const date = line.match(datePattern)?.[0];
     const isBullet = bulletPrefix.test(line);
     const title = line.replace(date ?? '', '').replace(/[|,]+\s*$/, '').trim();
-    const isRoleHeading = !isBullet && ((date && title) || (!date && /\s+(?:—|–|\bat\b)\s+/i.test(line)));
+    const isRoleHeading = !isBullet && ((date && title) || (!date && (headingSeparator.test(line) || (line.includes('|') && roleWords.test(line)))));
     if (isRoleHeading || (!experience.length && !isBullet && !date)) {
       let jobRole = '';
       let company = '';
       let jobLocation = '';
       if (title.includes('|')) {
         const pipeParts = title.split('|').map((value) => value.trim()).filter(Boolean);
-        const primaryParts = pipeParts[0].split(/\s+(?:—|–|\bat\b)\s+/i).map((value) => value.trim()).filter(Boolean);
+        const primaryParts = pipeParts[0].split(headingSeparator).map((value) => value.trim()).filter(Boolean);
         if (primaryParts.length > 1) {
           [jobRole = '', company = ''] = primaryParts;
           jobLocation = pipeParts.slice(1).join(' | ');
         } else if (/\b(?:engineer|developer|development|manager|analyst|designer|consultant|intern|specialist|architect|administrator|scientist|lead|director|coordinator)\b/i.test(pipeParts[1] || '')) {
           [company = '', jobRole = '', jobLocation = ''] = pipeParts;
+        } else if (pipeParts.length > 1 && roleWords.test(pipeParts[0]) && !/,|^(?:remote|hybrid|on.?site)$/i.test(pipeParts[1])) {
+          [jobRole = '', company = '', jobLocation = ''] = pipeParts;
         } else {
           [jobRole = '', jobLocation = ''] = pipeParts;
         }
       } else {
-        [jobRole = '', company = ''] = title.split(/\s+(?:—|–|\bat\b)\s+/i);
+        [jobRole = '', company = ''] = title.split(headingSeparator);
+        if (company && !roleWords.test(jobRole) && roleWords.test(company)) [jobRole, company] = [company, jobRole];
       }
       const [start = '', end = ''] = (date ?? '').split(/\s*(?:-|–|—|to)\s*/i);
       experience.push({ id: experience.length + 1, role: jobRole, company, location: jobLocation, start, end, bullets: [] });

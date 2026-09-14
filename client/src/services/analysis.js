@@ -1,5 +1,7 @@
 import api from './api.js';
 
+export const tailorResume = (resume, jobDescription) => api.post('/analysis/tailor', { resume, jobDescription }, { timeout: 70000 });
+
 export function analyzeResume(resume, jobDescription, companyName = '') {
   const formData = new FormData();
   formData.append('resume', resume);

@@ -15,6 +15,8 @@ const result = z.object({
   MONGODB_DB_NAME: z.string().trim().min(1).default('resumeiq'),
   JWT_SECRET: optionalSecret(32),
   OPENAI_API_KEY: optionalSecret(),
+  GEMINI_API_KEY: optionalSecret(),
+  GEMINI_MODEL: z.string().regex(/^[a-zA-Z0-9._-]+$/).default('gemini-3.1-pro-preview'),
   API_BASE_URL: z.string().url().default('http://localhost:5000'),
   CLIENT_APP_URL: z.string().url().default('http://localhost:5173'),
   GOOGLE_CLIENT_ID: optionalSecret(), GOOGLE_CLIENT_SECRET: optionalSecret(),
@@ -37,6 +39,8 @@ const env = Object.freeze({
   databaseName: values.MONGODB_DB_NAME,
   jwtSecret: values.JWT_SECRET,
   openAiApiKey: values.OPENAI_API_KEY,
+  geminiApiKey: values.GEMINI_API_KEY,
+  geminiModel: values.GEMINI_MODEL,
   apiBaseUrl: values.API_BASE_URL,
   clientAppUrl: values.CLIENT_APP_URL,
   oauth: {

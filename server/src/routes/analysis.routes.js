@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import { analyzeResume, checkResumeAts, extractResumeForEditor } from '../controllers/analysis.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
+import { tailorResume } from '../controllers/tailor.controller.js';
 
 const router = Router();
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -30,6 +31,7 @@ const analysisLimiter = rateLimit({
 });
 
 router.post('/extract', requireAuth, analysisLimiter, upload.single('resume'), extractResumeForEditor);
+router.post('/tailor', requireAuth, analysisLimiter, tailorResume);
 router.post('/ats-check', analysisLimiter, upload.single('resume'), checkResumeAts);
 router.post('/', requireAuth, analysisLimiter, upload.single('resume'), analyzeResume);
 

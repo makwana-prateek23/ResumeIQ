@@ -3,6 +3,9 @@ import resumeBlocks from '../assets/resume-blocks.png';
 import CompletionCelebration from './CompletionCelebration.jsx';
 import { useTheme } from '../hooks/useTheme.js';
 import { generateConfetti } from '../utils/confetti.js';
+import { extractResume } from '../services/analysis.js';
+import ResumeTailoring from './ResumeTailoring.jsx';
+import { customSectionLines } from '../utils/resume-sections.js';
 
 const initialResume = {
   name: '', role: '', email: '', phone: '', location: '', linkedin: '', github: '', website: '',
@@ -213,7 +216,9 @@ function PreviewSectionContent({ section, resume, color, style: selectedStyle })
 }
 
 function ImportedSection({ section, color, gap }) {
-  return <ResumeSection title={section.title} color={color} gap={gap}><div className="whitespace-pre-wrap break-words [tab-size:4]">{section.content}</div></ResumeSection>;
+  return <ResumeSection title={section.title} color={color} gap={gap}><div className="break-words [tab-size:4]">{customSectionLines(section.content).map((line, index) => line.bullet
+    ? <div key={index} className="flex items-start gap-2"><span aria-hidden="true">•</span><p className="min-w-0 flex-1 whitespace-pre-wrap">{line.text}</p></div>
+    : <p key={index} className="whitespace-pre-wrap">{line.text || '\u00a0'}</p>)}</div></ResumeSection>;
 }
 
 function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
@@ -243,6 +248,10 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
   const [downloading, setDownloading] = useState(false);
   const [downloadingWord, setDownloadingWord] = useState(false);
   const [exportMessage, setExportMessage] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState('');
+  const [importMessage, setImportMessage] = useState('');
+  const [pendingImport, setPendingImport] = useState(null);
   const skipAutosaveRef = useRef(false);
   const layout = useMemo(() => getLayoutMetrics(style), [style]);
 
@@ -314,6 +323,41 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
       customSections: current.customSections.filter((item) => item.id !== id),
       sectionOrder: (current.sectionOrder || initialResume.sectionOrder).filter((key) => key !== id)
     }));
+  }
+  async function uploadResume(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || importing) return;
+    setImportError('');
+    setImportMessage('');
+    setPendingImport(null);
+    if (!/\.(pdf|docx)$/i.test(file.name)) {
+      setImportError('Choose a PDF or Word (.docx) resume.');
+      return;
+    }
+    if (!file.size || file.size > 5 * 1024 * 1024) {
+      setImportError('Choose a non-empty resume file of 5 MB or smaller.');
+      return;
+    }
+    setImporting(true);
+    try {
+      const { data } = await extractResume(file);
+      if (!data.editorData || typeof data.editorData !== 'object') throw new Error('Missing resume data');
+      setPendingImport({ name: file.name, resume: hydrateResume(data.editorData), style: importedLayoutStyle(data.editorData) });
+    } catch (error) {
+      setImportError(error.response?.status === 401
+        ? 'Your session has expired. Sign in again to upload your resume.'
+        : error.response?.data?.error || 'Could not import this resume. Please try again.');
+    } finally {
+      setImporting(false);
+    }
+  }
+  function applyImportedResume() {
+    setResume(pendingImport.resume);
+    setStyle(pendingImport.style);
+    setSaved(false);
+    setImportMessage(`${pendingImport.name} imported. Review the extracted details below before exporting.`);
+    setPendingImport(null);
   }
   function saveDraft() { localStorage.setItem(storageKey, JSON.stringify({ resume, style })); setSaved(true); }
   function resetDraft() {
@@ -388,7 +432,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         const lines = pdf.splitTextToSize(String(value), width - layout.bulletIndent);
         lines.forEach((line, index) => {
           ensureSpace(layout.lineHeight);
-          if (index === 0) pdf.text('•', margin + 2, y);
+          if (index === 0) { pdf.setFillColor('#334155'); pdf.circle(margin + 4, y - layout.bodySize * 0.3, 1.2, 'F'); }
           pdf.text(line, margin + layout.bulletIndent, y);
           y += layout.lineHeight;
         });
@@ -497,10 +541,10 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         if (pdfSections[section]) { pdfSections[section](); return; }
         const custom = resume.customSections?.find((item) => item.id === section);
         if (custom?.content) {
-          const customLines = String(custom.content).split(/\r?\n/);
-          const firstLineHeight = measureLines(customLines[0] || ' ').length * layout.lineHeight;
+          const customLines = customSectionLines(custom.content);
+          const firstLineHeight = measureLines(customLines[0]?.text || ' ', layout.bodySize, customLines[0]?.bullet ? layout.bulletIndent : 0).length * layout.lineHeight;
           heading(custom.title || 'Section', firstLineHeight);
-          customLines.forEach((line) => text(line || ' ', layout.bodySize, 'normal', 1));
+          customLines.forEach((line) => line.bullet ? bulletText(line.text) : text(line.text || ' ', layout.bodySize, 'normal', 1));
           y += 4;
         }
       });
@@ -595,7 +639,7 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
         const custom = resume.customSections?.find((item) => item.id === section);
         if (custom?.content) {
           sectionHeading(custom.title || 'Section', true);
-          String(custom.content).split(/\r?\n/).forEach((line) => children.push(paragraph(line, { after: 20 })));
+          customSectionLines(custom.content).forEach((line) => children.push(paragraph(line.text, { after: 20, bullet: line.bullet })));
         }
       });
       const wordDocument = new Document({ sections: [{ properties: { page: { size: { width: wordPageWidth, height: wordPageHeight }, margin: { top: wordMargin, right: wordMargin, bottom: wordMargin, left: wordMargin } } }, children }] });
@@ -624,6 +668,29 @@ function ResumeWorkspace({ mode = 'create', initialResumeData = null }) {
   const previewScale = 595 / layout.page.width;
   const previewStyle = { ...style, size: layout.bodySize, spacing: layout.spacing, sectionGap: layout.sectionGap, itemGap: layout.itemGap, bulletIndent: layout.bulletIndent };
   return <main className="mx-auto max-w-[1500px] px-3 py-5 sm:px-7 sm:py-7">
+    <section aria-labelledby="resume-upload-title" aria-busy={importing} className="mb-6 rounded-2xl border border-indigo-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 id="resume-upload-title" className="text-lg font-black text-slate-950">Already have a resume?</h2>
+          <p id="resume-upload-help" className="mt-1 text-sm text-slate-600">Upload a PDF or Word (.docx) file up to 5 MB to fill in the builder, or start from scratch below.</p>
+        </div>
+        <div className="shrink-0">
+          <label htmlFor="builder-resume-upload" className="mb-2 block text-sm font-bold text-indigo-700">Upload resume</label>
+          <input id="builder-resume-upload" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-describedby="resume-upload-help" disabled={importing} onChange={uploadResume} className="block w-full max-w-xs text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-indigo-600 file:px-4 file:py-3 file:font-bold file:text-white disabled:opacity-60" />
+        </div>
+      </div>
+      <div role="status" className="mt-3 text-sm text-indigo-700">{importing ? 'Reading your resume…' : importMessage}</div>
+      {importError && <p role="alert" className="mt-3 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{importError}</p>}
+      {pendingImport && <div className="mt-3 rounded-xl bg-indigo-50 p-4">
+        <p className="break-words text-sm font-bold text-slate-900">{pendingImport.name} is ready to import.</p>
+        <p className="mt-1 text-sm text-slate-600">Using this file will replace the current draft. Review the extracted details after importing.</p>
+        <div className="mt-3 flex flex-wrap gap-3">
+          <button type="button" onClick={applyImportedResume} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white">Use uploaded resume</button>
+          <button type="button" onClick={() => setPendingImport(null)} className="rounded-xl border border-indigo-200 px-4 py-2 text-sm font-bold text-indigo-700">Keep current draft</button>
+        </div>
+      </div>}
+    </section>
+    <ResumeTailoring resume={resume} onApply={(next) => { setResume(next); setSaved(false); }} />
     <div aria-live="polite" className="sr-only">{exportMessage}</div>
     <CompletionCelebration show={showCelebration} confetti={celebration.confetti} reduceMotion={celebration.reduceMotion} onClose={() => setShowCelebration(false)} atsScore={atsReadiness.score} onDownloadPdf={downloadPdf} onDownloadWord={downloadWord} downloadingPdf={downloading} downloadingWord={downloadingWord} />
     <header className="relative mb-6 overflow-hidden rounded-3xl bg-slate-950 p-6 text-white sm:p-8"><div className="absolute inset-y-0 right-0 hidden w-[38%] lg:block"><div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/30 to-transparent" /><img src={resumeBlocks} alt="Resume content blocks combining into a finished document" className="h-full w-full object-cover opacity-75" /></div><div className="relative max-w-3xl"><p className="text-xs font-bold uppercase tracking-[0.2em] text-(--accent-eyebrow)">{mode === 'format' ? 'Resume formatting studio' : 'Guided resume builder'}</p><h1 className="mt-2 text-3xl font-black tracking-tight">{mode === 'format' ? 'Make every page clean and consistent.' : 'Build your resume, one simple block at a time.'}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Fill in the blocks on the left. Your professional, ATS-friendly document updates instantly on the right.</p><div className="mt-5 max-w-xs"><div className="flex justify-between text-xs font-bold"><span>Resume complete</span><span>{completion}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-(--accent-1) transition-all duration-500" style={{ width: `${completion}%` }} /></div></div></div></header>

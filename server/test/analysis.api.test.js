@@ -52,6 +52,13 @@ test('requires authentication for job matching while ATS checking stays public',
   });
 });
 
+test('requires authentication before AI tailoring', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/analysis/tailor`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    assert.equal(response.status, 401);
+  });
+});
+
 test('allows a valid Chrome extension origin through CORS', async () => {
   await withServer(async (baseUrl) => {
     const origin = 'chrome-extension://gbmiehmhaoeoibkcoapajaebeipakjjf';

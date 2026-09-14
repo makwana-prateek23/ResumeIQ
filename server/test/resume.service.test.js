@@ -2,6 +2,29 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildEditorResume, parseResume } from '../src/services/resume.service.js';
 
+test('extracts employers from separate title/company lines in either order', () => {
+  for (const heading of ['Project Manager\nAcme Technologies', 'Acme Technologies\nProject Manager', 'Project Manager\nAcme Technologies Jan 2022 - Present']) {
+    const editor = buildEditorResume(parseResume(`Jordan Lee\nEXPERIENCE\n${heading}\nJan 2022 - Present\n• Coordinated delivery across teams.\nBeta Systems\nBusiness Analyst\nJan 2020 - Dec 2021\n• Documented requirements.\nSKILLS\nReporting`));
+    assert.equal(editor.experience.length, 2);
+    assert.equal(editor.experience[0].role, 'Project Manager');
+    assert.equal(editor.experience[0].company, 'Acme Technologies');
+    assert.equal(editor.experience[1].company, 'Beta Systems');
+    assert.equal(editor.experience[1].role, 'Business Analyst');
+    assert.deepEqual(editor.experience[0].bullets, ['Coordinated delivery across teams.']);
+  }
+});
+
+test('extracts employers from pipe and ASCII dash headings without mistaking locations', () => {
+  for (const heading of ['Project Manager | Acme Technologies', 'Acme Technologies | Project Manager', 'Project Manager - Acme Technologies', 'Acme Technologies - Project Manager']) {
+    const editor = buildEditorResume(parseResume(`Jordan Lee\nEXPERIENCE\n${heading}\nJan 2022 - Present\n• Coordinated delivery.\nSKILLS\nReporting`));
+    assert.equal(editor.experience[0].company, 'Acme Technologies');
+    assert.equal(editor.experience[0].role, 'Project Manager');
+  }
+  const editor = buildEditorResume(parseResume('Jordan Lee\nEXPERIENCE\nProject Manager | Boston, MA\nJan 2022 - Present\n• Coordinated delivery.\nSKILLS\nReporting'));
+  assert.equal(editor.experience[0].company, '');
+  assert.equal(editor.experience[0].location, 'Boston, MA');
+});
+
 test('preserves imported section content and extracts professional links', () => {
   const text = `Jordan Lee
 Software Engineer
