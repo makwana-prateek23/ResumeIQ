@@ -9,6 +9,17 @@ export function errorHandler(error, _req, res, _next) {
   let status = Number.isInteger(error.status) ? error.status : 500;
   let message = error.message;
 
+  const isDatabaseAuthenticationError = error?.name === 'MongoServerError'
+    && (error?.code === 18 || error?.code === 8000 || /authentication failed|bad auth/i.test(error?.message));
+  const isDatabaseUnavailable = isDatabaseAuthenticationError
+    || error?.name === 'MongoServerSelectionError'
+    || error?.code === 'ETIMEOUT';
+
+  if (isDatabaseUnavailable) {
+    status = 503;
+    message = 'Account service is temporarily unavailable. Please try again shortly.';
+  }
+
   if (error instanceof multer.MulterError) {
     status = error.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
     message = error.code === 'LIMIT_FILE_SIZE'
@@ -24,7 +35,7 @@ export function errorHandler(error, _req, res, _next) {
   if (isServerError) console.error(error);
 
   res.status(status).json({
-    error: isServerError ? 'Internal server error' : message,
+    error: isServerError && !isDatabaseUnavailable ? 'Internal server error' : message,
     ...(env.nodeEnv === 'development' && isServerError ? { detail: error.message } : {})
   });
 }
